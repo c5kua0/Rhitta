@@ -1,0 +1,6 @@
+name: Rhitta
+version: 1.0.0
+main: me.reno.rhitta.RhittaPlugin
+api-version: '1.21'
+author: Reno
+description: Rhitta weapon plugin
