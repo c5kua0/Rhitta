@@ -23,56 +23,6 @@ public class RhittaManager {
 
     private UUID owner;
 
-    public RhittaManager(RhittaPlugin plugin) {
-        this.plugin = plugin;
-        this.rhittaKey = new NamespacedKey(plugin, "rhitta");
-    }
-
-    public ItemStack createRhitta() {
-        ItemStack item = new ItemStack(Material.NETHERITE_SWORD);
-        ItemMeta meta = item.getItemMeta();
-        if (meta != null) {
-            meta.setDisplayName("§6§lRHITTA");
-            meta.getPersistentDataContainer().set(
-                    rhittaKey,
-                    PersistentDataType.BYTE,
-                    (byte) 1
-            );
-            item.setItemMeta(meta);
-        }
-        return item;
-    }
-
-    public void markAsRhitta(ItemStack item) {
-        if (item == null) {
-            return;
-        }
-        ItemMeta meta = item.getItemMeta();
-package me.reno.rhitta;
-
-import org.bukkit.Material;
-import org.bukkit.NamespacedKey;
-import org.bukkit.entity.Player;
-import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.persistence.PersistentDataType;
-
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
-
-public class RhittaManager {
-
-    private final RhittaPlugin plugin;
-    private final NamespacedKey rhittaKey;
-
-    private final Set<UUID> resurrectionUsed = new HashSet<>();
-    private final Map<UUID, Integer> defense = new HashMap<>();
-
-    private UUID owner;
-
     // ONLY THIS PLAYER CAN OWN RHITTA
     private static final String OWNER_NAME = "_ToshiroCyMc";
 
@@ -272,4 +222,4 @@ public class RhittaManager {
 
         resurrectionUsed.remove(player.getUniqueId());
     }
-                }
+}
