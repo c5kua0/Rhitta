@@ -1,9 +1,7 @@
 package me.reno.rhitta;
 
-import org.bukkit.ChatColor;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
-import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -23,14 +21,13 @@ public class RhittaListener implements Listener {
 
     @EventHandler
     public void onHit(EntityDamageByEntityEvent event) {
-
-        if (!(event.getDamager() instanceof Player player)) {
+        if (!(event.getDamager() instanceof Player)) {
             return;
         }
 
-        Entity entity = event.getEntity();
+        Player player = (Player) event.getDamager();
 
-        if (!(entity instanceof LivingEntity target)) {
+        if (!(event.getEntity() instanceof LivingEntity)) {
             return;
         }
 
@@ -40,21 +37,23 @@ public class RhittaListener implements Listener {
             return;
         }
 
-        // Life steal
-        double damage = event.getFinalDamage();
-        double heal = Math.min(damage * 0.25, 4.0);
+        double heal = event.getFinalDamage() * 0.25;
 
-        double newHealth = Math.min(
-                player.getHealth() + heal,
-                getMaxHealth(player)
+        AttributeInstance health =
+                player.getAttribute(Attribute.MAX_HEALTH);
+
+        double maxHealth = 20.0;
+
+        if (health != null) {
+            maxHealth = health.getValue();
+        }
+
+        player.setHealth(
+                Math.min(player.getHealth() + heal, maxHealth)
         );
 
-        player.setHealth(newHealth);
-
-        // Defense growth
         manager.addDefense(player);
 
-        // Prevent Rhitta from losing durability
         if (item.getType().getMaxDurability() > 0) {
             item.setDurability((short) 0);
         }
@@ -62,43 +61,32 @@ public class RhittaListener implements Listener {
 
     @EventHandler
     public void onDeath(PlayerDeathEvent event) {
-
         Player player = event.getEntity();
 
         if (!manager.isOwner(player)) {
             return;
         }
 
-        ItemStack rhitta = null;
+        event.getDrops().removeIf(manager::isRhitta);
 
-        for (ItemStack item : player.getInventory().getContents()) {
-            if (manager.isRhitta(item)) {
-                rhitta = item;
-                break;
-            }
-        }
-
-        // Keep Rhitta from dropping
-        if (rhitta != null) {
-            event.getDrops().removeIf(manager::isRhitta);
-        }
-
-        // One-time resurrection
         if (manager.canResurrect(player)) {
+            manager.prepareResurrection(player);
             event.setKeepInventory(true);
             event.getDrops().clear();
-
-            manager.prepareResurrection(player);
         }
     }
 
     @EventHandler
     public void onRespawn(PlayerRespawnEvent event) {
-
         Player player = event.getPlayer();
 
         if (!manager.isResurrectionPending(player)) {
             return;
+        }
+
+        manager.resurrect(player);
+    }
+}            return;
         }
 
         manager.resurrect(player);
