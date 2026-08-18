@@ -1,1 +1,9 @@
-owner: ""
+weapon:
+  name: "Rhitta"
+  owner: ".ToshiroCyMc"
+  life-steal: 2.0
+  defense-per-hit: 0.5
+  resurrection: true
+  resurrection-bonus-duration: 60
+  resurrection-strength: 2.0
+  resurrection-defense: 2.0
