@@ -5,6 +5,7 @@ import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.Damageable;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 
@@ -40,16 +41,24 @@ public class RhittaManager {
     }
 
     public boolean isRhitta(ItemStack item) {
-        if (item == null || item.getType().isAir() || !item.hasItemMeta()) {
+
+        if (item == null || item.getType().isAir()) {
             return false;
         }
 
-        return item.getItemMeta()
-                .getPersistentDataContainer()
-                .has(rhittaKey, PersistentDataType.BYTE);
+        if (!item.hasItemMeta()) {
+            return false;
+        }
+
+        ItemMeta meta = item.getItemMeta();
+
+        return meta != null &&
+                meta.getPersistentDataContainer()
+                        .has(rhittaKey, PersistentDataType.BYTE);
     }
 
     public void markAsRhitta(ItemStack item) {
+
         if (item == null || item.getType().isAir()) {
             return;
         }
@@ -76,6 +85,7 @@ public class RhittaManager {
     }
 
     public void addDefense(Player player, int amount) {
+
         AttributeInstance attribute =
                 player.getAttribute(Attribute.ARMOR);
 
@@ -83,22 +93,72 @@ public class RhittaManager {
             return;
         }
 
-        double newValue = Math.min(
-                attribute.getBaseValue() + amount,
-                40.0
-        );
+        double newValue =
+                Math.min(
+                        attribute.getBaseValue() + amount,
+                        40.0
+                );
 
         attribute.setBaseValue(newValue);
     }
 
     public void repairRhitta(ItemStack item, int amount) {
-        if (item == null || !isRhitta(item)) {
+
+        if (!isRhitta(item)) {
             return;
         }
 
         ItemMeta meta = item.getItemMeta();
 
-        if (meta == null) {
+        if (!(meta instanceof Damageable damageable)) {
+            return;
+        }
+
+        int currentDamage = damageable.getDamage();
+
+        damageable.setDamage(
+                Math.max(0, currentDamage - amount)
+        );
+
+        item.setItemMeta(damageable);
+    }
+
+    public boolean hasResurrection(Player player) {
+        return !resurrectionUsed.contains(player.getUniqueId());
+    }
+
+    public void prepareResurrection(Player player) {
+
+        UUID uuid = player.getUniqueId();
+
+        resurrectionUsed.add(uuid);
+        resurrectionPending.add(uuid);
+    }
+
+    public boolean isResurrectionPending(Player player) {
+        return resurrectionPending.contains(player.getUniqueId());
+    }
+
+    public void completeResurrection(Player player) {
+        resurrectionPending.remove(player.getUniqueId());
+    }
+
+    public void resetResurrection(Player player) {
+
+        UUID uuid = player.getUniqueId();
+
+        resurrectionUsed.remove(uuid);
+        resurrectionPending.remove(uuid);
+    }
+
+    public NamespacedKey getRhittaKey() {
+        return rhittaKey;
+    }
+
+    public NamespacedKey getOwnerKey() {
+        return ownerKey;
+    }
+            }        if (meta == null) {
             return;
         }
 
