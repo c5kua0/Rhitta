@@ -12,7 +12,7 @@ public final class RhittaPlugin extends JavaPlugin {
         rhittaManager = new RhittaManager(this);
 
         getServer().getPluginManager().registerEvents(
-                new RhittaListener(this),
+                new RhittaListener(this, manager)
                 this
         );
 
