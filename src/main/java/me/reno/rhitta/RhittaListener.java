@@ -9,6 +9,9 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryDragEvent;
+import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -49,7 +52,6 @@ public class RhittaListener implements Listener {
         }
 
         ItemStack item = player.getInventory().getItemInMainHand();
-
         if (!manager.isRhitta(item)) {
             return;
         }
@@ -58,8 +60,7 @@ public class RhittaListener implements Listener {
 
         // Life steal: 20% of damage dealt, capped at 4 HP
         double heal = Math.min(event.getFinalDamage() * 0.20, 4.0);
-        double newHealth = Math.min(player.getHealth() + heal, getMaxHealth(player));
-        player.setHealth(newHealth);
+        player.setHealth(Math.min(player.getHealth() + heal, getMaxHealth(player)));
 
         // Defense grows every hit
         manager.addDefense(player);
@@ -91,6 +92,70 @@ public class RhittaListener implements Listener {
         makeUnbreakable(item);
     }
 
+    /**
+     * Rhitta can never be dropped.
+     */
+    @EventHandler
+    public void onDrop(PlayerDropItemEvent event) {
+        Player player = event.getPlayer();
+        ItemStack item = event.getItemDrop().getItemStack();
+
+        if (!manager.isRhitta(item)) {
+            return;
+        }
+
+        event.setCancelled(true);
+        makeUnbreakable(item);
+        player.updateInventory();
+    }
+
+    /**
+     * Rhitta can never be moved into chests, shulker boxes, or other containers.
+     */
+    @EventHandler
+    public void onInventoryClick(InventoryClickEvent event) {
+        if (!(event.getWhoClicked() instanceof Player player)) {
+            return;
+        }
+
+        ItemStack current = event.getCurrentItem();
+        ItemStack cursor = event.getCursor();
+
+        if (manager.isRhitta(current) || manager.isRhitta(cursor)) {
+            event.setCancelled(true);
+            player.updateInventory();
+        }
+    }
+
+    /**
+     * Rhitta can never be inventory-dragged.
+     */
+    @EventHandler
+    public void onInventoryDrag(InventoryDragEvent event) {
+        if (!(event.getWhoClicked() instanceof Player player)) {
+            return;
+        }
+
+        ItemStack oldCursor = event.getOldCursor();
+
+        if (manager.isRhitta(oldCursor)) {
+            event.setCancelled(true);
+            player.updateInventory();
+            return;
+        }
+
+        for (ItemStack item : event.getNewItems().values()) {
+            if (manager.isRhitta(item)) {
+                event.setCancelled(true);
+                player.updateInventory();
+                return;
+            }
+        }
+    }
+
+    /**
+     * Totem-style resurrection for the owner, once per life.
+     */
     @EventHandler
     public void onDeath(PlayerDeathEvent event) {
         Player player = event.getEntity();
@@ -109,11 +174,10 @@ public class RhittaListener implements Listener {
 
         manager.markResurrectionUsed(player);
 
-        plugin.getServer().getScheduler().runTaskLater(
-                plugin,
-                () -> resurrect(player),
-                2L
-        );
+        // Prevent Rhitta from dropping on death
+        event.getDrops().removeIf(manager::isRhitta);
+
+        plugin.getServer().getScheduler().runTaskLater(plugin, () -> resurrect(player), 2L);
     }
 
     private void resurrect(Player player) {
@@ -121,7 +185,6 @@ public class RhittaListener implements Listener {
             return;
         }
 
-        // Totem-style resurrection
         player.spigot().respawn();
 
         plugin.getServer().getScheduler().runTaskLater(
@@ -130,7 +193,7 @@ public class RhittaListener implements Listener {
                     manager.giveRhitta(player);
                     makeRhittaUnbreakable(player);
 
-                    // Strength III for 60 seconds (represents the 200% strength boost)
+                    // Strength III for 60 seconds
                     player.addPotionEffect(
                             new PotionEffect(
                                     PotionEffectType.STRENGTH,
@@ -142,6 +205,7 @@ public class RhittaListener implements Listener {
                             )
                     );
 
+                    // Full health
                     AttributeInstance maxHealth = player.getAttribute(Attribute.MAX_HEALTH);
                     if (maxHealth != null) {
                         player.setHealth(maxHealth.getValue());
@@ -160,6 +224,11 @@ public class RhittaListener implements Listener {
             if (manager.isRhitta(item)) {
                 makeUnbreakable(item);
             }
+        }
+
+        ItemStack offHand = player.getInventory().getItemInOffHand();
+        if (manager.isRhitta(offHand)) {
+            makeUnbreakable(offHand);
         }
     }
 
@@ -181,4 +250,4 @@ public class RhittaListener implements Listener {
         AttributeInstance attribute = player.getAttribute(Attribute.MAX_HEALTH);
         return attribute != null ? attribute.getValue() : 20.0;
     }
-    } 
+    }
