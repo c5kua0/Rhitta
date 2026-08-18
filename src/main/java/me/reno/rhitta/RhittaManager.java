@@ -1,48 +1,48 @@
 package me.reno.rhitta;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
-
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
-import org.bukkit.attribute.Attribute;
-import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
-import org.bukkit.plugin.java.JavaPlugin;
 
 public class RhittaManager {
 
-    private final JavaPlugin plugin;
+    private final RhittaPlugin plugin;
+
     private final NamespacedKey rhittaKey;
+    private final NamespacedKey defenseKey;
+    private final NamespacedKey resurrectionKey;
 
-    private final Map<UUID, Integer> defenseLevels = new HashMap<>();
-    private final Map<UUID, Boolean> resurrectionUsed = new HashMap<>();
-    private final Map<UUID, Boolean> resurrectionPending = new HashMap<>();
+    private static final String OWNER = ".ToshiroCyMc";
 
-    public RhittaManager(JavaPlugin plugin) {
+    public RhittaManager(RhittaPlugin plugin) {
         this.plugin = plugin;
-        this.rhittaKey = new NamespacedKey(plugin, "rhitta_weapon");
+
+        rhittaKey = new NamespacedKey(plugin, "rhitta_weapon");
+        defenseKey = new NamespacedKey(plugin, "rhitta_defense");
+        resurrectionKey = new NamespacedKey(plugin, "rhitta_resurrection_used");
+    }
+
+    public boolean isOwner(Player player) {
+        return player.getName().equalsIgnoreCase(OWNER);
     }
 
     public ItemStack createRhitta() {
         ItemStack item = new ItemStack(Material.NETHERITE_SWORD);
+
         ItemMeta meta = item.getItemMeta();
 
-        if (meta != null) {
-            meta.setDisplayName("§6§lRHITTA");
+        meta.setDisplayName("§6§lRHITTA");
 
-            meta.getPersistentDataContainer().set(
-                    rhittaKey,
-                    PersistentDataType.BYTE,
-                    (byte) 1
-            );
+        meta.getPersistentDataContainer().set(
+                rhittaKey,
+                PersistentDataType.BYTE,
+                (byte) 1
+        );
 
-            item.setItemMeta(meta);
-        }
+        item.setItemMeta(meta);
 
         return item;
     }
@@ -52,11 +52,11 @@ public class RhittaManager {
             return false;
         }
 
-        ItemMeta meta = item.getItemMeta();
-
-        if (meta == null) {
+        if (!item.hasItemMeta()) {
             return false;
         }
+
+        ItemMeta meta = item.getItemMeta();
 
         Byte value = meta.getPersistentDataContainer().get(
                 rhittaKey,
@@ -66,190 +66,71 @@ public class RhittaManager {
         return value != null && value == (byte) 1;
     }
 
-    public boolean isOwner(Player player) {
-        String owner = plugin.getConfig().getString("owner");
-
-        if (owner == null || owner.isEmpty()) {
-            return false;
+    public boolean hasRhitta(Player player) {
+        for (ItemStack item : player.getInventory().getContents()) {
+            if (isRhitta(item)) {
+                return true;
+            }
         }
 
-        return owner.equalsIgnoreCase(player.getName());
+        return false;
+    }
+
+    public void giveRhitta(Player player) {
+        if (!isOwner(player)) {
+            return;
+        }
+
+        if (!hasRhitta(player)) {
+            player.getInventory().addItem(createRhitta());
+        }
+    }
+
+    public int getDefense(Player player) {
+        Integer value = player.getPersistentDataContainer().get(
+                defenseKey,
+                PersistentDataType.INTEGER
+        );
+
+        return value == null ? 0 : value;
     }
 
     public void addDefense(Player player) {
-        UUID uuid = player.getUniqueId();
+        int defense = getDefense(player);
 
-        int level = defenseLevels.getOrDefault(uuid, 0) + 1;
-        defenseLevels.put(uuid, level);
-
-        AttributeInstance armor =
-                player.getAttribute(Attribute.ARMOR);
-
-        if (armor != null) {
-            armor.setBaseValue(10.0 + level);
+        if (defense < 50) {
+            defense++;
         }
-    }
 
-    public boolean canResurrect(Player player) {
-        return !resurrectionUsed.getOrDefault(
-                player.getUniqueId(),
-                false
+        player.getPersistentDataContainer().set(
+                defenseKey,
+                PersistentDataType.INTEGER,
+                defense
         );
     }
 
-    public void prepareResurrection(Player player) {
-        UUID uuid = player.getUniqueId();
-
-        resurrectionUsed.put(uuid, true);
-        resurrectionPending.put(uuid, true);
-    }
-
-    public boolean isResurrectionPending(Player player) {
-        return resurrectionPending.getOrDefault(
-                player.getUniqueId(),
-                false
-        );
-    }
-
-    public void resurrect(Player player) {
-        UUID uuid = player.getUniqueId();
-
-        resurrectionPending.remove(uuid);
-
-        AttributeInstance health =
-                player.getAttribute(Attribute.MAX_HEALTH);
-
-        if (health != null) {
-            player.setHealth(health.getValue());
-        } else {
-            player.setHealth(20.0);
-        }
-
-        AttributeInstance attack =
-                player.getAttribute(Attribute.ATTACK_DAMAGE);
-
-        AttributeInstance armor =
-                player.getAttribute(Attribute.ARMOR);
-
-        if (attack != null) {
-            double original = attack.getBaseValue();
-            attack.setBaseValue(original * 3.0);
-
-            plugin.getServer().getScheduler().runTaskLater(
-                    plugin,
-                    () -> attack.setBaseValue(original),
-                    20L * 60L
-            );
-        }
-
-        if (armor != null) {
-            double original = armor.getBaseValue();
-            armor.setBaseValue(original * 3.0);
-
-            plugin.getServer().getScheduler().runTaskLater(
-                    plugin,
-                    () -> armor.setBaseValue(original),
-                    20L * 60L
-            );
-        }
-    }
-            }            return;
-        }
-
-        ItemMeta meta = item.getItemMeta();
-
-        if (!(meta instanceof Damageable damageable)) {
-            return;
-        }
-
-        int currentDamage = damageable.getDamage();
-
-        damageable.setDamage(
-                Math.max(0, currentDamage - amount)
+    public boolean hasUsedResurrection(Player player) {
+        Byte value = player.getPersistentDataContainer().get(
+                resurrectionKey,
+                PersistentDataType.BYTE
         );
 
-        item.setItemMeta(damageable);
+        return value != null && value == (byte) 1;
     }
 
-    public boolean hasResurrection(Player player) {
-        return !resurrectionUsed.contains(player.getUniqueId());
-    }
-
-    public void prepareResurrection(Player player) {
-
-        UUID uuid = player.getUniqueId();
-
-        resurrectionUsed.add(uuid);
-        resurrectionPending.add(uuid);
-    }
-
-    public boolean isResurrectionPending(Player player) {
-        return resurrectionPending.contains(player.getUniqueId());
-    }
-
-    public void completeResurrection(Player player) {
-        resurrectionPending.remove(player.getUniqueId());
-    }
-
-    public void resetResurrection(Player player) {
-
-        UUID uuid = player.getUniqueId();
-
-        resurrectionUsed.remove(uuid);
-        resurrectionPending.remove(uuid);
+    public void markResurrectionUsed(Player player) {
+        player.getPersistentDataContainer().set(
+                resurrectionKey,
+                PersistentDataType.BYTE,
+                (byte) 1
+        );
     }
 
     public NamespacedKey getRhittaKey() {
         return rhittaKey;
     }
 
-    public NamespacedKey getOwnerKey() {
-        return ownerKey;
-    }
-            }        if (meta == null) {
-            return;
-        }
-
-        if (!meta.isUnbreakable()) {
-            int newDamage = Math.max(
-                    0,
-                    meta.getDamage() - amount
-            );
-
-            meta.setDamage(newDamage);
-            item.setItemMeta(meta);
-        }
-    }
-
-    public boolean hasResurrection(Player player) {
-        return !resurrectionUsed.contains(player.getUniqueId());
-    }
-
-    public void prepareResurrection(Player player) {
-        UUID uuid = player.getUniqueId();
-
-        resurrectionUsed.add(uuid);
-        resurrectionPending.add(uuid);
-    }
-
-    public boolean isResurrectionPending(Player player) {
-        return resurrectionPending.contains(player.getUniqueId());
-    }
-
-    public void completeResurrection(Player player) {
-        resurrectionPending.remove(player.getUniqueId());
-    }
-
-    public void resetResurrection(Player player) {
-        resurrectionUsed.remove(player.getUniqueId());
-        resurrectionPending.remove(player.getUniqueId());
-    }
-
-    public NamespacedKey getRhittaKey() {
-        return rhittaKey;
-    }
-
-    public NamespacedKey getOwnerKey() {
-        return ownerKey;
+    public String getOwnerName() {
+        return OWNER;
     }
 }
