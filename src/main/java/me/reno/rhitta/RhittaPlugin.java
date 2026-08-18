@@ -2,38 +2,36 @@ package me.reno.rhitta;
 
 import org.bukkit.plugin.java.JavaPlugin;
 
-public final class RhittaPlugin extends JavaPlugin {
+public class RhittaPlugin extends JavaPlugin {
 
-    private RhittaManager rhittaManager;
+    private RhittaManager manager;
 
     @Override
     public void onEnable() {
 
-        rhittaManager = new RhittaManager(this);
+        manager = new RhittaManager(this);
 
         getServer().getPluginManager().registerEvents(
-                new RhittaListener(this, manager)
+                new RhittaListener(this, manager),
                 this
         );
 
+        RhittaCommand command = new RhittaCommand(manager);
+
         if (getCommand("rhitta") != null) {
-            getCommand("rhitta").setExecutor(
-                    new RhittaCommand(this)
-            );
+            getCommand("rhitta").setExecutor(command);
+            getCommand("rhitta").setTabCompleter(command);
         }
 
-        getLogger().info("================================");
-        getLogger().info("        RHITTA AWAKENED");
-        getLogger().info("        Owner: .ToshiroCyMc");
-        getLogger().info("================================");
+        getLogger().info("Rhitta has been enabled!");
     }
 
     @Override
     public void onDisable() {
-        getLogger().info("Rhitta has been sealed.");
+        getLogger().info("Rhitta has been disabled!");
     }
 
-    public RhittaManager getRhittaManager() {
-        return rhittaManager;
+    public RhittaManager getManager() {
+        return manager;
     }
 }
