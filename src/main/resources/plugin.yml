@@ -7,5 +7,5 @@ description: Rhitta weapon plugin
 
 commands:
   rhitta:
-    description: Rhitta command
+    description: Rhitta weapon command
     usage: /rhitta
