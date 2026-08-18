@@ -55,7 +55,7 @@ public class RhittaCommand implements CommandExecutor {
                 );
             }
 
-            // /rhitta remove PlayerName
+            // /rhitta remove PlayerName  OR  /rhitta remove @a
             case "remove" -> {
 
                 // Only the Rhitta owner can remove it
@@ -68,11 +68,44 @@ public class RhittaCommand implements CommandExecutor {
 
                 if (args.length < 2) {
                     player.sendMessage(
-                            ChatColor.RED + "Usage: /rhitta remove PlayerName"
+                            ChatColor.RED + "Usage: /rhitta remove PlayerName|@a"
                     );
                     return true;
                 }
 
+                // /rhitta remove @a -> remove from everyone online
+                if (args[1].equalsIgnoreCase("@a")) {
+
+                    int totalRemoved = 0;
+                    int affectedPlayers = 0;
+
+                    for (Player target : plugin.getServer().getOnlinePlayers()) {
+                        int removed = manager.removeRhitta(target);
+
+                        if (removed > 0) {
+                            totalRemoved += removed;
+                            affectedPlayers++;
+
+                            target.sendMessage(
+                                    ChatColor.RED
+                                            + "Rhitta was removed from your inventory."
+                            );
+                        }
+                    }
+
+                    player.sendMessage(
+                            ChatColor.GREEN
+                                    + "Removed "
+                                    + totalRemoved
+                                    + " Rhitta item(s) from "
+                                    + affectedPlayers
+                                    + " player(s)."
+                    );
+
+                    return true;
+                }
+
+                // /rhitta remove PlayerName
                 Player target = plugin.getServer()
                         .getPlayerExact(args[1]);
 
@@ -110,7 +143,7 @@ public class RhittaCommand implements CommandExecutor {
 
             default -> player.sendMessage(
                     ChatColor.RED
-                            + "Usage: /rhitta [status|give|remove PlayerName]"
+                            + "Usage: /rhitta [status|give|remove PlayerName|@a]"
             );
         }
 
@@ -145,4 +178,4 @@ public class RhittaCommand implements CommandExecutor {
                         + defense
         );
     }
-            }
+            } 
