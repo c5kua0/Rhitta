@@ -5,24 +5,23 @@ import java.util.Map;
 import java.util.UUID;
 
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
-import org.bukkit.NamespacedKey;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public class RhittaManager {
 
     private final JavaPlugin plugin;
+    private final NamespacedKey rhittaKey;
 
     private final Map<UUID, Integer> defenseLevels = new HashMap<>();
     private final Map<UUID, Boolean> resurrectionUsed = new HashMap<>();
     private final Map<UUID, Boolean> resurrectionPending = new HashMap<>();
-
-    private final NamespacedKey rhittaKey;
 
     public RhittaManager(JavaPlugin plugin) {
         this.plugin = plugin;
@@ -68,17 +67,19 @@ public class RhittaManager {
     }
 
     public boolean isOwner(Player player) {
-        return plugin.getConfig()
-                .getString("owner")
-                .equalsIgnoreCase(player.getName());
+        String owner = plugin.getConfig().getString("owner");
+
+        if (owner == null || owner.isEmpty()) {
+            return false;
+        }
+
+        return owner.equalsIgnoreCase(player.getName());
     }
 
     public void addDefense(Player player) {
         UUID uuid = player.getUniqueId();
 
-        int level = defenseLevels.getOrDefault(uuid, 0);
-        level++;
-
+        int level = defenseLevels.getOrDefault(uuid, 0) + 1;
         defenseLevels.put(uuid, level);
 
         AttributeInstance armor =
@@ -90,9 +91,10 @@ public class RhittaManager {
     }
 
     public boolean canResurrect(Player player) {
-        UUID uuid = player.getUniqueId();
-
-        return !resurrectionUsed.getOrDefault(uuid, false);
+        return !resurrectionUsed.getOrDefault(
+                player.getUniqueId(),
+                false
+        );
     }
 
     public void prepareResurrection(Player player) {
@@ -114,7 +116,14 @@ public class RhittaManager {
 
         resurrectionPending.remove(uuid);
 
-        player.setHealth(getMaxHealth(player));
+        AttributeInstance health =
+                player.getAttribute(Attribute.MAX_HEALTH);
+
+        if (health != null) {
+            player.setHealth(health.getValue());
+        } else {
+            player.setHealth(20.0);
+        }
 
         AttributeInstance attack =
                 player.getAttribute(Attribute.ATTACK_DAMAGE);
@@ -124,7 +133,6 @@ public class RhittaManager {
 
         if (attack != null) {
             double original = attack.getBaseValue();
-
             attack.setBaseValue(original * 3.0);
 
             plugin.getServer().getScheduler().runTaskLater(
@@ -136,7 +144,6 @@ public class RhittaManager {
 
         if (armor != null) {
             double original = armor.getBaseValue();
-
             armor.setBaseValue(original * 3.0);
 
             plugin.getServer().getScheduler().runTaskLater(
@@ -146,25 +153,7 @@ public class RhittaManager {
             );
         }
     }
-
-    private double getMaxHealth(Player player) {
-        AttributeInstance health =
-                player.getAttribute(Attribute.MAX_HEALTH);
-
-        if (health == null) {
-            return 20.0;
-        }
-
-        return health.getValue();
-    }
-    }
-        attribute.setBaseValue(newValue);
-    }
-
-    public void repairRhitta(ItemStack item, int amount) {
-
-        if (!isRhitta(item)) {
-            return;
+            }            return;
         }
 
         ItemMeta meta = item.getItemMeta();
