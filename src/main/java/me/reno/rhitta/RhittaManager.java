@@ -21,7 +21,6 @@ public class RhittaManager {
     private final Set<UUID> resurrectionUsed = new HashSet<>();
     private final Map<UUID, Integer> defense = new HashMap<>();
 
-    // Tracks who currently owns the Rhitta sword.
     private UUID owner;
 
     public RhittaManager(RhittaPlugin plugin) {
@@ -79,14 +78,12 @@ public class RhittaManager {
         if (player == null) {
             return;
         }
-        // Prevent duplicates
         if (hasRhitta(player)) {
             return;
         }
         ItemStack rhitta = createRhitta();
         player.getInventory().addItem(rhitta);
 
-        // Whoever receives the Rhitta becomes its owner.
         owner = player.getUniqueId();
     }
 
@@ -102,23 +99,14 @@ public class RhittaManager {
         return false;
     }
 
-    /**
-     * @return the UUID of the current Rhitta owner, or null if no one owns it yet.
-     */
     public UUID getOwner() {
         return owner;
     }
 
-    /**
-     * Manually set the Rhitta owner (e.g. for admin commands or loading saved state).
-     */
     public void setOwner(UUID ownerUuid) {
         this.owner = ownerUuid;
     }
 
-    /**
-     * @return true if the given player is the current owner of the Rhitta.
-     */
     public boolean isOwner(Player player) {
         if (player == null || owner == null) {
             return false;
@@ -162,4 +150,4 @@ public class RhittaManager {
         }
         resurrectionUsed.remove(player.getUniqueId());
     }
-  } 
+}
