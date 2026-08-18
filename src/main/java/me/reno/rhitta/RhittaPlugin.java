@@ -8,6 +8,7 @@ public final class RhittaPlugin extends JavaPlugin {
 
     @Override
     public void onEnable() {
+
         rhittaManager = new RhittaManager(this);
 
         getServer().getPluginManager().registerEvents(
@@ -16,10 +17,15 @@ public final class RhittaPlugin extends JavaPlugin {
         );
 
         if (getCommand("rhitta") != null) {
-            getCommand("rhitta").setExecutor(new RhittaCommand(this));
+            getCommand("rhitta").setExecutor(
+                    new RhittaCommand(this)
+            );
         }
 
-        getLogger().info("Rhitta has awakened!");
+        getLogger().info("================================");
+        getLogger().info("        RHITTA AWAKENED");
+        getLogger().info("        Owner: .ToshiroCyMc");
+        getLogger().info("================================");
     }
 
     @Override
