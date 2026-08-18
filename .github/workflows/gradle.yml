@@ -32,3 +32,9 @@ jobs:
         with:
           name: Rhitta
           path: build/libs/*.jar
+
+      - name: Upload plugin JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: Rhitta
+          path: build/libs/*.jar
