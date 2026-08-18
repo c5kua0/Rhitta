@@ -1,9 +1,9 @@
 weapon:
   name: "Rhitta"
   owner: "_ToshiroCyMc"
-  life-steal: 2.0
-  defense-per-hit: 0.5
+  life-steal: 4.0
+  defense-per-hit: 1.0
   resurrection: true
   resurrection-bonus-duration: 60
-  resurrection-strength: 2.0
-  resurrection-defense: 2.0
+  resurrection-strength: 6.0
+  resurrection-defense: 8.0
