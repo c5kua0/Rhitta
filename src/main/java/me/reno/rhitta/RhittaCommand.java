@@ -1,12 +1,10 @@
 package me.reno.rhitta;
 
-import org.bukkit.Material;
+import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
-import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
 
 public class RhittaCommand implements CommandExecutor {
 
@@ -17,75 +15,47 @@ public class RhittaCommand implements CommandExecutor {
     }
 
     @Override
-    public boolean onCommand(
-            CommandSender sender,
-            Command command,
-            String label,
-            String[] args
-    ) {
-
+    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!(sender instanceof Player player)) {
-            sender.sendMessage("Only players can use this command.");
+            sender.sendMessage(ChatColor.RED + "Only players can use this command.");
             return true;
         }
 
         RhittaManager manager = plugin.getRhittaManager();
 
-        if (!manager.isOwner(player)) {
-            player.sendMessage("§cRhitta does not recognize you as its owner.");
-            return true;
-        }
-
         if (args.length == 0) {
-            player.sendMessage("§6Rhitta §7commands:");
-            player.sendMessage("§e/rhitta give §7- Obtain Rhitta");
+            sendStatus(player, manager);
             return true;
         }
 
-        if (args[0].equalsIgnoreCase("give")) {
+        String sub = args[0].toLowerCase();
 
-            ItemStack rhitta = createRhitta();
+        switch (sub) {
+            case "status" -> sendStatus(player, manager);
 
-            manager.markAsRhitta(rhitta);
+            case "give" -> {
+                if (!manager.isOwner(player)) {
+                    player.sendMessage(ChatColor.RED + "Only the current owner of Rhitta can do that.");
+                    return true;
+                }
+                manager.giveRhitta(player);
+                player.sendMessage(ChatColor.GREEN + "Rhitta has been given to you.");
+            }
 
-            player.getInventory().addItem(rhitta);
-
-            player.sendMessage("§6§lRHITTA §ehas chosen you.");
-            player.sendMessage("§7The sacred axe has awakened.");
-
-            return true;
+            default -> player.sendMessage(ChatColor.RED + "Usage: /rhitta [status|give]");
         }
 
-        player.sendMessage("§cUnknown Rhitta command.");
         return true;
     }
 
-    private ItemStack createRhitta() {
+    private void sendStatus(Player player, RhittaManager manager) {
+        boolean hasIt = manager.hasRhitta(player);
+        boolean owns = manager.isOwner(player);
+        int defense = manager.getDefense(player);
 
-        ItemStack item = new ItemStack(Material.NETHERITE_AXE);
-
-        ItemMeta meta = item.getItemMeta();
-
-        if (meta != null) {
-
-            meta.setDisplayName("§6§lRHITTA");
-
-            meta.setLore(java.util.List.of(
-                    "§7The sacred axe of the chosen one.",
-                    "",
-                    "§c♥ Life Steal",
-                    "§b◆ Growing Defense",
-                    "§e★ One-Time Resurrection",
-                    "§6✦ 200% Power Awakening",
-                    "",
-                    "§8Owner: .ToshiroCyMc"
-            ));
-
-            meta.setUnbreakable(true);
-
-            item.setItemMeta(meta);
-        }
-
-        return item;
+        player.sendMessage(ChatColor.GOLD + "--- Rhitta Status ---");
+        player.sendMessage(ChatColor.YELLOW + "Holding Rhitta: " + (hasIt ? "Yes" : "No"));
+        player.sendMessage(ChatColor.YELLOW + "Owner: " + (owns ? "You" : "Someone else"));
+        player.sendMessage(ChatColor.YELLOW + "Defense stacks: " + defense);
     }
 }
