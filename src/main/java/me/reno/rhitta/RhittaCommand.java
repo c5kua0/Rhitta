@@ -6,6 +6,12 @@ import org.bukkit.command.CommandSender;
 
 public class RhittaCommand implements CommandExecutor {
 
+    private final RhittaPlugin plugin;
+
+    public RhittaCommand(RhittaPlugin plugin) {
+        this.plugin = plugin;
+    }
+
     @Override
     public boolean onCommand(
             CommandSender sender,
