@@ -3,11 +3,15 @@ name: Build Rhitta
 on:
   push:
     branches: [ "main" ]
-  workflow_dispatch:
+  pull_request:
+    branches: [ "main" ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout
@@ -26,12 +30,6 @@ jobs:
 
       - name: Build plugin
         run: gradle build
-
-      - name: Upload plugin JAR
-        uses: actions/upload-artifact@v4
-        with:
-          name: Rhitta
-          path: build/libs/*.jar
 
       - name: Upload plugin JAR
         uses: actions/upload-artifact@v4
