@@ -15,6 +15,8 @@ import java.util.UUID;
 
 public class RhittaManager {
 
+    private static final String OWNER_NAME = "_ToshiroCyMc";
+
     private final RhittaPlugin plugin;
     private final NamespacedKey rhittaKey;
 
@@ -22,9 +24,6 @@ public class RhittaManager {
     private final Map<UUID, Integer> defense = new HashMap<>();
 
     private UUID owner;
-
-    // ONLY THIS PLAYER CAN OWN RHITTA
-    private static final String OWNER_NAME = "_ToshiroCyMc";
 
     public RhittaManager(RhittaPlugin plugin) {
         this.plugin = plugin;
@@ -37,13 +36,8 @@ public class RhittaManager {
 
         if (meta != null) {
             meta.setDisplayName("§6§lRHITTA");
-
-            meta.getPersistentDataContainer().set(
-                    rhittaKey,
-                    PersistentDataType.BYTE,
-                    (byte) 1
-            );
-
+            meta.setUnbreakable(true);
+            meta.getPersistentDataContainer().set(rhittaKey, PersistentDataType.BYTE, (byte) 1);
             item.setItemMeta(meta);
         }
 
@@ -56,17 +50,12 @@ public class RhittaManager {
         }
 
         ItemMeta meta = item.getItemMeta();
-
         if (meta == null) {
             return;
         }
 
-        meta.getPersistentDataContainer().set(
-                rhittaKey,
-                PersistentDataType.BYTE,
-                (byte) 1
-        );
-
+        meta.setUnbreakable(true);
+        meta.getPersistentDataContainer().set(rhittaKey, PersistentDataType.BYTE, (byte) 1);
         item.setItemMeta(meta);
     }
 
@@ -76,34 +65,20 @@ public class RhittaManager {
         }
 
         ItemMeta meta = item.getItemMeta();
-
         if (meta == null) {
             return false;
         }
 
-        Byte value = meta.getPersistentDataContainer().get(
-                rhittaKey,
-                PersistentDataType.BYTE
-        );
-
+        Byte value = meta.getPersistentDataContainer().get(rhittaKey, PersistentDataType.BYTE);
         return value != null && value == (byte) 1;
     }
 
     public boolean isAllowedOwner(Player player) {
-        if (player == null) {
-            return false;
-        }
-
-        return player.getName().equalsIgnoreCase(OWNER_NAME);
+        return player != null && player.getName().equalsIgnoreCase(OWNER_NAME);
     }
 
     public void giveRhitta(Player player) {
-        if (player == null) {
-            return;
-        }
-
-        // DO NOT GIVE RHITTA TO OTHER PLAYERS
-        if (!isAllowedOwner(player)) {
+        if (player == null || !isAllowedOwner(player)) {
             return;
         }
 
@@ -112,10 +87,7 @@ public class RhittaManager {
             return;
         }
 
-        ItemStack rhitta = createRhitta();
-
-        player.getInventory().addItem(rhitta);
-
+        player.getInventory().addItem(createRhitta());
         owner = player.getUniqueId();
     }
 
@@ -130,17 +102,15 @@ public class RhittaManager {
             }
         }
 
-        return false;
+        return isRhitta(player.getInventory().getItemInOffHand());
     }
 
-    // Removes ALL Rhitta items from this player's inventory
     public int removeRhitta(Player player) {
         if (player == null) {
             return 0;
         }
 
         int removed = 0;
-
         ItemStack[] contents = player.getInventory().getContents();
 
         for (int slot = 0; slot < contents.length; slot++) {
@@ -152,9 +122,7 @@ public class RhittaManager {
             }
         }
 
-        // Also check off-hand
         ItemStack offHand = player.getInventory().getItemInOffHand();
-
         if (isRhitta(offHand)) {
             removed += offHand.getAmount();
             player.getInventory().setItemInOffHand(null);
@@ -172,7 +140,7 @@ public class RhittaManager {
     }
 
     public boolean isOwner(Player player) {
-        if (player == null || owner == null) {
+        if (player == null || !isAllowedOwner(player) || owner == null) {
             return false;
         }
 
@@ -193,18 +161,12 @@ public class RhittaManager {
         }
 
         UUID uuid = player.getUniqueId();
-
         int current = defense.getOrDefault(uuid, 0);
-
         defense.put(uuid, current + 1);
     }
 
     public boolean hasUsedResurrection(Player player) {
-        if (player == null) {
-            return false;
-        }
-
-        return resurrectionUsed.contains(player.getUniqueId());
+        return player != null && resurrectionUsed.contains(player.getUniqueId());
     }
 
     public void markResurrectionUsed(Player player) {
