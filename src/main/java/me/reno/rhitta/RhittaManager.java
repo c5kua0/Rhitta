@@ -34,6 +34,10 @@ public class RhittaManager {
 
         ItemMeta meta = item.getItemMeta();
 
+        if (meta == null) {
+            return item;
+        }
+
         meta.setDisplayName("§6§lRHITTA");
 
         meta.getPersistentDataContainer().set(
@@ -45,6 +49,28 @@ public class RhittaManager {
         item.setItemMeta(meta);
 
         return item;
+    }
+
+    public void markAsRhitta(ItemStack item) {
+        if (item == null || item.getType() == Material.AIR) {
+            return;
+        }
+
+        ItemMeta meta = item.getItemMeta();
+
+        if (meta == null) {
+            return;
+        }
+
+        meta.setDisplayName("§6§lRHITTA");
+
+        meta.getPersistentDataContainer().set(
+                rhittaKey,
+                PersistentDataType.BYTE,
+                (byte) 1
+        );
+
+        item.setItemMeta(meta);
     }
 
     public boolean isRhitta(ItemStack item) {
@@ -71,66 +97,4 @@ public class RhittaManager {
             if (isRhitta(item)) {
                 return true;
             }
-        }
-
-        return false;
-    }
-
-    public void giveRhitta(Player player) {
-        if (!isOwner(player)) {
-            return;
-        }
-
-        if (!hasRhitta(player)) {
-            player.getInventory().addItem(createRhitta());
-        }
-    }
-
-    public int getDefense(Player player) {
-        Integer value = player.getPersistentDataContainer().get(
-                defenseKey,
-                PersistentDataType.INTEGER
-        );
-
-        return value == null ? 0 : value;
-    }
-
-    public void addDefense(Player player) {
-        int defense = getDefense(player);
-
-        if (defense < 50) {
-            defense++;
-        }
-
-        player.getPersistentDataContainer().set(
-                defenseKey,
-                PersistentDataType.INTEGER,
-                defense
-        );
-    }
-
-    public boolean hasUsedResurrection(Player player) {
-        Byte value = player.getPersistentDataContainer().get(
-                resurrectionKey,
-                PersistentDataType.BYTE
-        );
-
-        return value != null && value == (byte) 1;
-    }
-
-    public void markResurrectionUsed(Player player) {
-        player.getPersistentDataContainer().set(
-                resurrectionKey,
-                PersistentDataType.BYTE,
-                (byte) 1
-        );
-    }
-
-    public NamespacedKey getRhittaKey() {
-        return rhittaKey;
-    }
-
-    public String getOwnerName() {
-        return OWNER;
-    }
-}
+        } 
