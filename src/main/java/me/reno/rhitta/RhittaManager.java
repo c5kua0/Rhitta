@@ -4,6 +4,7 @@ import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 
@@ -13,388 +14,212 @@ import java.util.UUID;
 
 public class RhittaManager {
 
-    private static final String OWNER_NAME = "_ToshiroCyMc";
+    public static final String OWNER_NAME = "_ToshiroCyMc";
 
     private final RhittaPlugin plugin;
+    private final Map<UUID, Integer> defense = new HashMap<>();
 
     private final NamespacedKey rhittaKey;
     private final NamespacedKey rhittaIdKey;
     private final NamespacedKey resurrectionKey;
 
-    private final Map<UUID, Integer> defense =
-            new HashMap<>();
-
     private UUID owner;
+    private long rhittaCounter = 0L;
 
     public RhittaManager(RhittaPlugin plugin) {
-
         this.plugin = plugin;
-
-        rhittaKey =
-                new NamespacedKey(
-                        plugin,
-                        "rhitta"
-                );
-
-        rhittaIdKey =
-                new NamespacedKey(
-                        plugin,
-                        "rhitta_id"
-                );
-
-        resurrectionKey =
-                new NamespacedKey(
-                        plugin,
-                        "resurrection_used"
-                );
+        this.rhittaKey = new NamespacedKey(plugin, "rhitta");
+        this.rhittaIdKey = new NamespacedKey(plugin, "rhitta_id");
+        this.resurrectionKey = new NamespacedKey(plugin, "resurrection_used");
     }
 
-    // =====================================================
-    // CREATE RHITTA
-    // =====================================================
-
-    public ItemStack createRhitta() {
-
-        ItemStack item =
-                new ItemStack(
-                        Material.NETHERITE_SWORD,
-                        1
-                );
-
-        ItemMeta meta =
-                item.getItemMeta();
-
-        if (meta == null) {
-            return item;
-        }
-
-        meta.setDisplayName(
-                "§6§lRHITTA"
-        );
-
-        meta.setUnbreakable(true);
-
-        meta.getPersistentDataContainer().set(
-                rhittaKey,
-                PersistentDataType.BYTE,
-                (byte) 1
-        );
-
-        meta.getPersistentDataContainer().set(
-                rhittaIdKey,
-                PersistentDataType.STRING,
-                "RHITTA-" + plugin.getName()
-        );
-
-        item.setItemMeta(meta);
-
-        return item;
-    }
-
-    // =====================================================
-    // CHECK RHITTA
-    // =====================================================
-
-    public boolean isRhitta(ItemStack item) {
-
-        if (item == null ||
-                item.getType() == Material.AIR) {
-
-            return false;
-        }
-
-        ItemMeta meta =
-                item.getItemMeta();
-
-        if (meta == null) {
-            return false;
-        }
-
-        Byte value =
-                meta.getPersistentDataContainer().get(
-                        rhittaKey,
-                        PersistentDataType.BYTE
-                );
-
-        String id =
-                meta.getPersistentDataContainer().get(
-                        rhittaIdKey,
-                        PersistentDataType.STRING
-                );
-
-        return value != null
-                && value == (byte) 1
-                && (
-                    "RHITTA-" + plugin.getName()
-                ).equals(id);
-    }
-
-    // =====================================================
-    // OWNER
-    // =====================================================
+    // ----------------------------------------------------------------
+    // Ownership
+    // ----------------------------------------------------------------
 
     public boolean isAllowedOwner(Player player) {
-
-        return player != null
-                && player.getName()
-                .equalsIgnoreCase(OWNER_NAME);
+        if (owner != null) {
+            return player.getUniqueId().equals(owner);
+        }
+        // First-time setup: whoever holds the configured owner name claims it.
+        if (player.getName().equalsIgnoreCase(OWNER_NAME)) {
+            setOwner(player.getUniqueId());
+            return true;
+        }
+        return false;
     }
 
     public boolean isOwner(Player player) {
-
-        if (!isAllowedOwner(player)) {
-            return false;
-        }
-
-        if (owner == null) {
-
-            owner =
-                    player.getUniqueId();
-
-            return true;
-        }
-
-        return owner.equals(
-                player.getUniqueId()
-        );
+        return owner != null && player.getUniqueId().equals(owner);
     }
 
     public void setOwner(UUID uuid) {
-
-        owner = uuid;
+        this.owner = uuid;
     }
 
     public UUID getOwner() {
-
         return owner;
     }
 
-    // =====================================================
-    // GIVE RHITTA
-    // =====================================================
+    // ----------------------------------------------------------------
+    // Item creation / identification
+    // ----------------------------------------------------------------
 
-    public void giveRhitta(Player player) {
+    public ItemStack createRhitta() {
+        ItemStack item = new ItemStack(Material.NETHERITE_SWORD, 1);
+        ItemMeta meta = item.getItemMeta();
+        meta.setDisplayName("\u00a76\u00a7lRHITTA");
+        meta.setUnbreakable(true);
 
-        if (!isAllowedOwner(player)) {
-            return;
-        }
+        rhittaCounter++;
+        String id = "RHITTA-" + rhittaCounter;
 
-        owner =
-                player.getUniqueId();
+        meta.getPersistentDataContainer().set(rhittaKey, PersistentDataType.BYTE, (byte) 1);
+        meta.getPersistentDataContainer().set(rhittaIdKey, PersistentDataType.STRING, id);
 
-        forceOneRhitta(player);
+        item.setItemMeta(meta);
+        return item;
     }
 
-    // =====================================================
-    // FORCE EXACTLY ONE RHITTA
-    // =====================================================
-
-    public void forceOneRhitta(Player player) {
-
-        if (player == null ||
-                !isAllowedOwner(player)) {
-
-            return;
-        }
-
-        boolean found = false;
-
-        // =================================================
-        // MAIN INVENTORY + HOTBAR
-        // =================================================
-
-        ItemStack[] contents =
-                player.getInventory()
-                        .getContents();
-
-        for (int slot = 0;
-             slot < contents.length;
-             slot++) {
-
-            ItemStack item =
-                    contents[slot];
-
-            if (!isRhitta(item)) {
-                continue;
-            }
-
-            if (!found) {
-
-                /*
-                 * Keep the first Rhitta.
-                 *
-                 * Force stack size to 1.
-                 */
-                item.setAmount(1);
-
-                found = true;
-
-            } else {
-
-                /*
-                 * Delete every duplicate.
-                 */
-                player.getInventory()
-                        .setItem(
-                                slot,
-                                null
-                        );
-            }
-        }
-
-        // =================================================
-        // OFFHAND
-        // =================================================
-
-        ItemStack offhand =
-                player.getInventory()
-                        .getItemInOffHand();
-
-        if (isRhitta(offhand)) {
-
-            if (!found) {
-
-                offhand.setAmount(1);
-
-                found = true;
-
-            } else {
-
-                player.getInventory()
-                        .setItemInOffHand(
-                                null
-                        );
-            }
-        }
-
-        // =================================================
-        // CREATE IF NONE EXISTS
-        // =================================================
-
-        if (!found) {
-
-            ItemStack rhitta =
-                    createRhitta();
-
-            rhitta.setAmount(1);
-
-            player.getInventory()
-                    .addItem(rhitta);
-        }
-
-        owner =
-                player.getUniqueId();
+    public boolean isRhitta(ItemStack item) {
+        if (item == null || item.getType() == Material.AIR) return false;
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null) return false;
+        Byte flag = meta.getPersistentDataContainer().get(rhittaKey, PersistentDataType.BYTE);
+        return flag != null && flag == (byte) 1;
     }
 
-    // =====================================================
-    // HAS RHITTA
-    // =====================================================
+    public void makeUnbreakable(ItemStack item) {
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null) return;
+        meta.setUnbreakable(true);
+        item.setItemMeta(meta);
+    }
+
+    // ----------------------------------------------------------------
+    // Give / enforce single copy
+    // ----------------------------------------------------------------
 
     public boolean hasRhitta(Player player) {
-
-        if (player == null) {
-            return false;
+        PlayerInventory inv = player.getInventory();
+        for (ItemStack stack : inv.getContents()) {
+            if (isRhitta(stack)) return true;
         }
+        return isRhitta(inv.getItemInOffHand());
+    }
 
-        for (ItemStack item :
-                player.getInventory()
-                        .getContents()) {
-
-            if (isRhitta(item)) {
-                return true;
+    /**
+     * Removes every Rhitta copy currently in the player's inventory
+     * (main contents + off hand). Used to guarantee we never end up
+     * holding more than one, no matter how a dupe was attempted.
+     */
+    public int stripAllRhitta(Player player) {
+        int removed = 0;
+        PlayerInventory inv = player.getInventory();
+        ItemStack[] contents = inv.getContents();
+        for (int i = 0; i < contents.length; i++) {
+            if (isRhitta(contents[i])) {
+                contents[i] = null;
+                removed++;
             }
         }
+        inv.setContents(contents);
 
-        return isRhitta(
-                player.getInventory()
-                        .getItemInOffHand()
-        );
+        if (isRhitta(inv.getItemInOffHand())) {
+            inv.setItemInOffHand(null);
+            removed++;
+        }
+        return removed;
     }
 
-    // =====================================================
-    // DEFENSE
-    // =====================================================
+    public void giveRhitta(Player player) {
+        // Guarantee we never stack a second copy on top of an existing one.
+        stripAllRhitta(player);
+
+        PlayerInventory inv = player.getInventory();
+        ItemStack rhitta = createRhitta();
+
+        if (inv.getItemInOffHand() == null || inv.getItemInOffHand().getType() == Material.AIR) {
+            inv.setItemInOffHand(rhitta);
+            return;
+        }
+
+        HashMap<Integer, ItemStack> overflow = inv.addItem(rhitta);
+        if (!overflow.isEmpty()) {
+            // Inventory was full - drop it at the player's feet rather than lose/dupe it.
+            player.getWorld().dropItemNaturally(player.getLocation(), rhitta);
+        }
+    }
+
+    /**
+     * Called on join/respawn: ensures the owner ends up with exactly
+     * one Rhitta, never zero, never more than one.
+     */
+    public void forceOneRhitta(Player player) {
+        if (!isOwner(player)) {
+            // Non-owners should never be holding Rhitta at all.
+            stripAllRhitta(player);
+            return;
+        }
+
+        int count = countRhitta(player);
+        if (count == 0) {
+            giveRhitta(player);
+        } else if (count > 1) {
+            stripAllRhitta(player);
+            giveRhitta(player);
+        }
+    }
+
+    private int countRhitta(Player player) {
+        int count = 0;
+        PlayerInventory inv = player.getInventory();
+        for (ItemStack stack : inv.getContents()) {
+            if (isRhitta(stack)) count++;
+        }
+        if (isRhitta(inv.getItemInOffHand())) count++;
+        return count;
+    }
+
+    // ----------------------------------------------------------------
+    // Defense stacking
+    // ----------------------------------------------------------------
 
     public int getDefense(Player player) {
-
-        if (player == null) {
-            return 0;
-        }
-
-        return defense.getOrDefault(
-                player.getUniqueId(),
-                0
-        );
+        return defense.getOrDefault(player.getUniqueId(), 0);
     }
 
-    public void addDefense(Player player) {
-
-        if (player == null) {
-            return;
-        }
-
-        UUID uuid =
-                player.getUniqueId();
-
-        int current =
-                defense.getOrDefault(
-                        uuid,
-                        0
-                );
-
-        defense.put(
-                uuid,
-                current + 1
-        );
+    public void addDefense(Player player, int amount) {
+        int current = getDefense(player);
+        defense.put(player.getUniqueId(), current + amount);
     }
 
-    // =====================================================
-    // LOW-HEALTH POWER
-    // =====================================================
-
-    public boolean hasUsedResurrection(
-            Player player) {
-
-        if (player == null) {
-            return false;
-        }
-
-        Byte value =
-                player.getPersistentDataContainer()
-                        .get(
-                                resurrectionKey,
-                                PersistentDataType.BYTE
-                        );
-
-        return value != null
-                && value == (byte) 1;
+    public void resetDefense(Player player) {
+        defense.remove(player.getUniqueId());
     }
 
-    public void markResurrectionUsed(
-            Player player) {
+    // ----------------------------------------------------------------
+    // Resurrection (once-per-life)
+    // ----------------------------------------------------------------
 
-        if (player == null) {
-            return;
-        }
-
-        player.getPersistentDataContainer()
-                .set(
-                        resurrectionKey,
-                        PersistentDataType.BYTE,
-                        (byte) 1
-                );
+    public boolean hasUsedResurrection(ItemStack item) {
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null) return false;
+        Byte value = meta.getPersistentDataContainer().get(resurrectionKey, PersistentDataType.BYTE);
+        return value != null && value == (byte) 1;
     }
 
-    public void resetResurrection(
-            Player player) {
+    public void markResurrectionUsed(ItemStack item) {
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null) return;
+        meta.getPersistentDataContainer().set(resurrectionKey, PersistentDataType.BYTE, (byte) 1);
+        item.setItemMeta(meta);
+    }
 
-        if (player == null) {
-            return;
-        }
-
-        player.getPersistentDataContainer()
-                .remove(
-                        resurrectionKey
-                );
+    public void resetResurrection(ItemStack item) {
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null) return;
+        meta.getPersistentDataContainer().set(resurrectionKey, PersistentDataType.BYTE, (byte) 0);
+        item.setItemMeta(meta);
     }
 }
