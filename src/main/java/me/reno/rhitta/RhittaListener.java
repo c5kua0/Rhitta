@@ -1,5 +1,8 @@
 package me.reno.rhitta;
 
+import org.bukkit.ChatColor;
+import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.entity.Entity;
@@ -23,672 +26,256 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
-import org.bukkit.util.Vector;
+import org.bukkit.scheduler.BukkitRunnable;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 public class RhittaListener implements Listener {
-
-    private static final String OWNER = "_ToshiroCyMc";
-
-    private static final long FIREBALL_COOLDOWN = 3000L;
-
-    /*
-     * 10 HP = 5 hearts.
-     */
-    private static final double LOW_HEALTH = 10.0;
-
-    /*
-     * 60 seconds.
-     */
-    private static final int BUFF_DURATION = 20 * 60;
 
     private final RhittaPlugin plugin;
     private final RhittaManager manager;
 
     private long lastFireball = 0L;
+    private static final long FIREBALL_COOLDOWN = 3000L; // ms
+    private static final double LOW_HEALTH = 2.0;
+    private static final int BUFF_DURATION = 20 * 60; // ticks, resurrection buff
 
-    public RhittaListener(
-            RhittaPlugin plugin,
-            RhittaManager manager) {
+    private final Map<UUID, Long> lastSunriseDay = new HashMap<>();
+    private final Map<UUID, Long> lastNoonDay = new HashMap<>();
 
+    public RhittaListener(RhittaPlugin plugin, RhittaManager manager) {
         this.plugin = plugin;
         this.manager = manager;
     }
 
-    // =====================================================
-    // JOIN
-    // =====================================================
-
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
-
         Player player = event.getPlayer();
-
-        if (!isOwner(player)) {
-            return;
+        if (manager.isOwner(player)) {
+            manager.forceOneRhitta(player);
         }
-
-        /*
-         * FORCE EXACTLY ONE RHITTA.
-         */
-        manager.forceOneRhitta(player);
-
-        makeRhittaUnbreakable(player);
     }
-
-    // =====================================================
-    // RESPAWN
-    // =====================================================
 
     @EventHandler
     public void onRespawn(PlayerRespawnEvent event) {
-
         Player player = event.getPlayer();
-
-        if (!isOwner(player)) {
-            return;
-        }
-
-        /*
-         * Wait until the respawn inventory has been restored.
-         */
-        plugin.getServer()
-                .getScheduler()
-                .runTaskLater(
-                        plugin,
-                        () -> {
-
-                            if (!player.isOnline()) {
-                                return;
-                            }
-
-                            /*
-                             * Normal death.
-                             *
-                             * No resurrection.
-                             *
-                             * Force exactly ONE Rhitta.
-                             */
-                            manager.forceOneRhitta(player);
-
-                            makeRhittaUnbreakable(player);
-
-                        },
-                        2L
-                );
+        plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+            manager.forceOneRhitta(player);
+        }, 1L);
     }
 
-    // =====================================================
-    // LOW HEALTH "WHO DECIDED THAT?"
-    // =====================================================
-
-    @EventHandler(
-            priority = EventPriority.HIGHEST
-    )
+    @EventHandler(priority = EventPriority.HIGHEST)
     public void onLowHealth(EntityDamageEvent event) {
+        if (!(event.getEntity() instanceof Player)) return;
+        Player player = (Player) event.getEntity();
+        if (event.isCancelled()) return;
+        if (!manager.hasRhitta(player)) return;
 
-        if (!(event.getEntity() instanceof Player player)) {
-            return;
-        }
+        ItemStack rhitta = findRhitta(player);
+        if (rhitta == null || manager.hasUsedResurrection(rhitta)) return;
 
-        if (!isOwner(player)) {
-            return;
-        }
+        double remainingHealth = player.getHealth() - event.getFinalDamage();
+        if (remainingHealth > LOW_HEALTH) return;
 
-        /*
-         * Rhitta must exist.
-         */
-        if (!manager.hasRhitta(player)) {
-            return;
-        }
-
-        /*
-         * Already used?
-         */
-        if (manager.hasUsedResurrection(player)) {
-            return;
-        }
-
-        /*
-         * Don't trigger for cancelled damage.
-         */
-        if (event.isCancelled()) {
-            return;
-        }
-
-        /*
-         * Calculate health after the damage.
-         */
-        double remainingHealth =
-                player.getHealth()
-                        - event.getFinalDamage();
-
-        /*
-         * Only activate when damage would bring
-         * the player to 5 hearts or lower.
-         */
-        if (remainingHealth > LOW_HEALTH) {
-            return;
-        }
-
-        /*
-         * Cancel the damage.
-         *
-         * PLAYER DOES NOT DIE.
-         */
         event.setCancelled(true);
+        manager.markResurrectionUsed(rhitta);
 
-        /*
-         * Mark the ability as permanently used.
-         */
-        manager.markResurrectionUsed(player);
+        player.setHealth(Math.min(LOW_HEALTH + 1.0, player.getMaxHealth()));
+        player.sendMessage(ChatColor.GOLD + "" + ChatColor.BOLD + "Who decided that?");
 
-        plugin.getServer()
-                .getScheduler()
-                .runTask(
-                        plugin,
-                        () -> activateRhittaPower(player)
-                );
+        player.addPotionEffect(new PotionEffect(PotionEffectType.STRENGTH, BUFF_DURATION, 1, false, false, false));
+        player.addPotionEffect(new PotionEffect(PotionEffectType.RESISTANCE, BUFF_DURATION, 1, false, false, false));
     }
 
-    // =====================================================
-    // RHITTA POWER
-    // =====================================================
-
-    private void activateRhittaPower(Player player) {
-
-        if (!player.isOnline()) {
-            return;
-        }
-
-        /*
-         * FULL HEALTH.
-         */
-        player.setHealth(getMaxHealth(player));
-
-        /*
-         * CHAT MESSAGE.
-         */
-        player.sendMessage(
-                "§6§lWho decided that?"
-        );
-
-        /*
-         * STRENGTH X
-         *
-         * Amplifier 9 = Level X.
-         */
-        player.addPotionEffect(
-                new PotionEffect(
-                        PotionEffectType.STRENGTH,
-                        BUFF_DURATION,
-                        9,
-                        false,
-                        false,
-                        true
-                )
-        );
-
-        /*
-         * RESISTANCE X
-         *
-         * Amplifier 9 = Level X.
-         */
-        player.addPotionEffect(
-                new PotionEffect(
-                        PotionEffectType.RESISTANCE,
-                        BUFF_DURATION,
-                        9,
-                        false,
-                        false,
-                        true
-                )
-        );
-
-        /*
-         * Make absolutely sure there is only
-         * one Rhitta after the ability activates.
-         */
-        manager.forceOneRhitta(player);
-    }
-
-    // =====================================================
-    // MELEE HIT
-    // =====================================================
-
-    @EventHandler(
-            priority = EventPriority.HIGHEST
-    )
+    @EventHandler
     public void onHit(EntityDamageByEntityEvent event) {
+        if (!(event.getDamager() instanceof Player)) return;
+        Player player = (Player) event.getDamager();
 
-        if (!(event.getDamager() instanceof Player player)) {
-            return;
+        ItemStack weapon = player.getInventory().getItemInMainHand();
+        if (!manager.isRhitta(weapon)) return;
+
+        double lifeSteal = plugin.getConfig().getDouble("weapon.life-steal", 4.0);
+        double heal = Math.min(player.getHealth() + lifeSteal, player.getMaxHealth());
+        player.setHealth(heal);
+
+        double defensePerHit = plugin.getConfig().getDouble("weapon.defense-per-hit", 1.0);
+        manager.addDefense(player, (int) defensePerHit);
+
+        AttributeInstance attribute = player.getAttribute(Attribute.MAX_HEALTH);
+        if (attribute != null) {
+            // Defense is tracked separately; nothing to do to the attribute
+            // itself here, this hook is left for future scaling logic.
         }
-
-        if (!isOwner(player)) {
-            return;
-        }
-
-        ItemStack weapon =
-                player.getInventory()
-                        .getItemInMainHand();
-
-        if (!manager.isRhitta(weapon)) {
-            return;
-        }
-
-        makeUnbreakable(weapon);
-
-        /*
-         * LIFE STEAL
-         *
-         * 20% of damage.
-         * Maximum 4 HP.
-         */
-        double heal =
-                Math.min(
-                        event.getFinalDamage() * 0.20,
-                        4.0
-                );
-
-        player.setHealth(
-                Math.min(
-                        player.getHealth() + heal,
-                        getMaxHealth(player)
-                )
-        );
-
-        /*
-         * DEFENSE +1 PER HIT.
-         */
-        manager.addDefense(player);
     }
-
-    // =====================================================
-    // RIGHT CLICK FIREBALL
-    // =====================================================
 
     @EventHandler
     public void onInteract(PlayerInteractEvent event) {
-
-        if (event.getHand() != EquipmentSlot.HAND) {
-            return;
-        }
-
-        if (event.getAction() != Action.RIGHT_CLICK_AIR
-                && event.getAction() != Action.RIGHT_CLICK_BLOCK) {
-            return;
-        }
+        if (event.getHand() != EquipmentSlot.HAND) return;
+        if (event.getAction() != Action.RIGHT_CLICK_AIR && event.getAction() != Action.RIGHT_CLICK_BLOCK) return;
 
         Player player = event.getPlayer();
-
-        if (!isOwner(player)) {
-            return;
-        }
-
-        ItemStack item =
-                player.getInventory()
-                        .getItemInMainHand();
-
-        if (!manager.isRhitta(item)) {
-            return;
-        }
+        ItemStack item = player.getInventory().getItemInMainHand();
+        if (!manager.isRhitta(item)) return;
 
         long now = System.currentTimeMillis();
-
-        if (now - lastFireball < FIREBALL_COOLDOWN) {
-            return;
-        }
-
+        if (now - lastFireball < FIREBALL_COOLDOWN) return;
         lastFireball = now;
 
-        launchFireball(player);
+        Location eye = player.getEyeLocation();
+        org.bukkit.util.Vector direction = eye.getDirection().normalize();
+        Location spawnLoc = eye.clone().add(direction.clone().multiply(1.0));
 
-        event.setCancelled(true);
-    }
-
-    // =====================================================
-    // LAUNCH FIREBALL
-    // =====================================================
-
-    private void launchFireball(Player player) {
-
-        Vector direction =
-                player.getEyeLocation()
-                        .getDirection()
-                        .normalize();
-
-        Fireball fireball =
-                player.getWorld().spawn(
-                        player.getEyeLocation()
-                                .add(
-                                        direction
-                                                .clone()
-                                                .multiply(1.5)
-                                ),
-                        Fireball.class
-                );
-
+        Fireball fireball = (Fireball) player.getWorld().spawn(spawnLoc, Fireball.class);
         fireball.setShooter(player);
-
         fireball.setDirection(direction);
-
-        /*
-         * Explosion power.
-         *
-         * Blocks CAN be destroyed.
-         */
-        fireball.setYield(2.0F);
-
-        /*
-         * No fire.
-         */
+        fireball.setYield(0F);
         fireball.setIsIncendiary(false);
     }
 
-    // =====================================================
-    // FIREBALL HIT
-    // =====================================================
-
-    @EventHandler(
-            priority = EventPriority.HIGHEST
-    )
+    @EventHandler
     public void onFireballHit(ProjectileHitEvent event) {
-
-        if (!(event.getEntity() instanceof Fireball fireball)) {
-            return;
-        }
-
-        if (!(fireball.getShooter() instanceof Player shooter)) {
-            return;
-        }
-
-        if (!isOwner(shooter)) {
-            return;
-        }
+        if (!(event.getEntity() instanceof Fireball)) return;
+        Fireball fireball = (Fireball) event.getEntity();
+        if (!(fireball.getShooter() instanceof Player)) return;
 
         Entity hit = event.getHitEntity();
+        if (!(hit instanceof LivingEntity)) return;
 
-        /*
-         * BLOCK HIT
-         *
-         * Do NOT cancel/remove the fireball.
-         *
-         * Vanilla explosion will destroy blocks.
-         */
-        if (!(hit instanceof LivingEntity target)) {
-            return;
-        }
-
-        /*
-         * 10 base damage
-         *
-         * +30% penetration-style bonus
-         *
-         * = 13 damage.
-         */
-        double damage = 10.0 * 1.30;
-
-        /*
-         * Damage mobs AND players.
-         */
-        target.damage(
-                damage,
-                shooter
-        );
+        onFireballDamage((LivingEntity) hit);
     }
 
-    // =====================================================
-    // FIREBALL DAMAGE
-    // =====================================================
-
-    @EventHandler(
-            priority = EventPriority.HIGHEST
-    )
-    public void onFireballDamage(
-            EntityDamageByEntityEvent event) {
-
-        if (!(event.getDamager() instanceof Fireball fireball)) {
-            return;
-        }
-
-        if (!(fireball.getShooter() instanceof Player shooter)) {
-            return;
-        }
-
-        if (!isOwner(shooter)) {
-            return;
-        }
-
-        /*
-         * Cancel vanilla fireball entity damage.
-         *
-         * ProjectileHitEvent applies our damage.
-         */
-        event.setCancelled(true);
+    private void onFireballDamage(LivingEntity target) {
+        double damage = plugin.getConfig().getDouble("weapon.fireball-damage", 4.0);
+        target.damage(damage);
     }
-
-    // =====================================================
-    // PICKUP
-    // =====================================================
 
     @EventHandler
     public void onPickup(EntityPickupItemEvent event) {
+        if (!(event.getEntity() instanceof Player)) return;
+        Player player = (Player) event.getEntity();
+        ItemStack stack = event.getItem().getItemStack();
+        if (!manager.isRhitta(stack)) return;
 
-        if (!(event.getEntity() instanceof Player player)) {
-            return;
-        }
-
-        ItemStack item =
-                event.getItem()
-                        .getItemStack();
-
-        if (!manager.isRhitta(item)) {
-            return;
-        }
-
-        /*
-         * ONLY OWNER CAN PICK UP RHITTA.
-         */
-        if (!isOwner(player)) {
-
+        if (!manager.isOwner(player)) {
             event.setCancelled(true);
-
-            player.setHealth(0.0);
-
             return;
         }
-
-        /*
-         * Let pickup complete, then force
-         * the inventory back to exactly ONE.
-         */
-        plugin.getServer()
-                .getScheduler()
-                .runTask(
-                        plugin,
-                        () -> {
-
-                            manager.forceOneRhitta(player);
-
-                            makeRhittaUnbreakable(player);
-                        }
-                );
+        if (manager.hasRhitta(player)) {
+            event.setCancelled(true);
+            event.getItem().remove();
+        }
     }
-
-    // =====================================================
-    // DROP
-    // =====================================================
 
     @EventHandler
     public void onDrop(PlayerDropItemEvent event) {
-
-        ItemStack item =
-                event.getItemDrop()
-                        .getItemStack();
-
-        if (!manager.isRhitta(item)) {
-            return;
+        ItemStack stack = event.getItemDrop().getItemStack();
+        if (manager.isRhitta(stack)) {
+            event.setCancelled(true);
         }
-
-        /*
-         * Rhitta CANNOT be dropped.
-         */
-        event.setCancelled(true);
-
-        event.getItemDrop().remove();
-
-        /*
-         * Force one back into inventory.
-         */
-        manager.forceOneRhitta(
-                event.getPlayer()
-        );
     }
-
-    // =====================================================
-    // INVENTORY CLICK
-    // =====================================================
 
     @EventHandler
-    public void onInventoryClick(
-            InventoryClickEvent event) {
-
-        if (!(event.getWhoClicked() instanceof Player player)) {
-            return;
-        }
-
-        ItemStack current =
-                event.getCurrentItem();
-
-        ItemStack cursor =
-                event.getCursor();
-
-        if (!manager.isRhitta(current)
-                && !manager.isRhitta(cursor)) {
-            return;
-        }
-
-        /*
-         * Prevent moving/storing Rhitta.
-         */
-        event.setCancelled(true);
-
-        manager.forceOneRhitta(player);
-    }
-
-    // =====================================================
-    // INVENTORY DRAG
-    // =====================================================
-
-    @EventHandler
-    public void onInventoryDrag(
-            InventoryDragEvent event) {
-
-        if (!(event.getWhoClicked() instanceof Player player)) {
-            return;
-        }
-
-        if (!manager.isRhitta(event.getOldCursor())) {
-            return;
-        }
-
-        /*
-         * Prevent dragging Rhitta.
-         */
-        event.setCancelled(true);
-
-        manager.forceOneRhitta(player);
-    }
-
-    // =====================================================
-    // DEATH
-    // =====================================================
-
-    @EventHandler(
-            priority = EventPriority.HIGHEST
-    )
-    public void onDeath(PlayerDeathEvent event) {
-
-        Player player = event.getEntity();
-
-        if (!isOwner(player)) {
-            return;
-        }
-
-        /*
-         * Rhitta NEVER appears in death drops.
-         */
-        event.getDrops()
-                .removeIf(manager::isRhitta);
-
-        /*
-         * NO resurrection.
-         *
-         * Player dies normally.
-         *
-         * Respawn event restores exactly ONE.
-         */
-    }
-
-    // =====================================================
-    // HELPERS
-    // =====================================================
-
-    private boolean isOwner(Player player) {
-
-        return player != null
-                && player.getName()
-                .equalsIgnoreCase(OWNER);
-    }
-
-    private void makeRhittaUnbreakable(Player player) {
-
-        for (ItemStack item :
-                player.getInventory().getContents()) {
-
-            if (manager.isRhitta(item)) {
-                makeUnbreakable(item);
+    public void onInventoryClick(InventoryClickEvent event) {
+        ItemStack current = event.getCurrentItem();
+        ItemStack cursor = event.getCursor();
+        if (manager.isRhitta(current) || manager.isRhitta(cursor)) {
+            if (event.getClickedInventory() != null
+                    && !(event.getClickedInventory() instanceof PlayerInventory)) {
+                event.setCancelled(true);
             }
         }
+    }
 
-        ItemStack offhand =
-                player.getInventory()
-                        .getItemInOffHand();
-
-        if (manager.isRhitta(offhand)) {
-            makeUnbreakable(offhand);
+    @EventHandler
+    public void onInventoryDrag(InventoryDragEvent event) {
+        ItemStack cursor = event.getOldCursor();
+        if (manager.isRhitta(cursor)) {
+            if (event.getInventory() != null && !(event.getInventory() instanceof PlayerInventory)) {
+                event.setCancelled(true);
+            }
         }
     }
 
-    private void makeUnbreakable(ItemStack item) {
-
-        if (item == null || !manager.isRhitta(item)) {
-            return;
-        }
-
-        ItemMeta meta = item.getItemMeta();
-
-        if (meta == null) {
-            return;
-        }
-
-        meta.setUnbreakable(true);
-
-        item.setItemMeta(meta);
+    @EventHandler
+    public void onDeath(PlayerDeathEvent event) {
+        List<ItemStack> drops = event.getDrops();
+        drops.removeIf(manager::isRhitta);
     }
 
-    private double getMaxHealth(Player player) {
+    public void startBuffScheduler() {
+        int interval = plugin.getConfig().getInt("buffs.check-interval-ticks", 20);
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                checkTimeBuffs();
+            }
+        }.runTaskTimer(plugin, interval, interval);
+    }
 
-        AttributeInstance attribute =
-                player.getAttribute(
-                        Attribute.MAX_HEALTH
-                );
+    private void checkTimeBuffs() {
+        for (Player player : plugin.getServer().getOnlinePlayers()) {
+            if (!manager.isOwner(player)) continue;
+            if (!manager.hasRhitta(player)) continue;
 
-        return attribute != null
-                ? attribute.getValue()
-                : 20.0;
+            World world = player.getWorld();
+            long time = world.getTime();
+            long day = world.getFullTime() / 24000L;
+
+            applyTimeBuff(player, world, "sunrise", time, day, lastSunriseDay);
+            applyTimeBuff(player, world, "noon", time, day, lastNoonDay);
+        }
+    }
+
+    private void applyTimeBuff(Player player, World world, String key, long time, long day,
+                                Map<UUID, Long> lastTriggeredDay) {
+        String path = "buffs." + key;
+        if (!plugin.getConfig().getBoolean(path + ".enabled", false)) return;
+
+        long triggerTick = plugin.getConfig().getLong(path + ".time-ticks", 0L);
+        int window = plugin.getConfig().getInt(path + ".window-ticks", 40);
+
+        boolean inWindow = time >= triggerTick && time < triggerTick + window;
+        if (!inWindow) return;
+
+        Long lastDay = lastTriggeredDay.get(player.getUniqueId());
+        if (lastDay != null && lastDay == day) return;
+
+        lastTriggeredDay.put(player.getUniqueId(), day);
+
+        String effectName = plugin.getConfig().getString(path + ".effect", "SPEED");
+        PotionEffectType type = PotionEffectType.getByName(effectName);
+        if (type == null) {
+            plugin.getLogger().warning("Unknown potion effect '" + effectName + "' for buffs." + key + ".effect");
+            return;
+        }
+
+        int amplifier = plugin.getConfig().getInt(path + ".amplifier", 0);
+        int durationSeconds = plugin.getConfig().getInt(path + ".duration-seconds", 30);
+        int durationTicks = durationSeconds * 20;
+
+        player.addPotionEffect(new PotionEffect(type, durationTicks, amplifier, false, true, true));
+
+        String message = plugin.getConfig().getString(path + ".message", "");
+        if (message != null && !message.isEmpty()) {
+            player.sendMessage(ChatColor.translateAlternateColorCodes('&', message));
+        }
+    }
+
+    private ItemStack findRhitta(Player player) {
+        PlayerInventory inv = player.getInventory();
+        if (manager.isRhitta(inv.getItemInMainHand())) return inv.getItemInMainHand();
+        if (manager.isRhitta(inv.getItemInOffHand())) return inv.getItemInOffHand();
+        for (ItemStack stack : inv.getContents()) {
+            if (manager.isRhitta(stack)) return stack;
+        }
+        return null;
     }
 }
