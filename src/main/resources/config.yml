@@ -3,7 +3,29 @@ weapon:
   owner: "_ToshiroCyMc"
   life-steal: 4.0
   defense-per-hit: 1.0
+  fireball-damage: 4.0
   resurrection: true
   resurrection-bonus-duration: 60
   resurrection-strength: 6.0
   resurrection-defense: 8.0
+
+buffs:
+  check-interval-ticks: 20   # how often (in ticks) to check world time; 20 = every second
+
+  sunrise:
+    enabled: true
+    time-ticks: 0            # Minecraft day-time tick for sunrise
+    window-ticks: 40          # how wide a window counts as "at" sunrise
+    effect: SPEED
+    amplifier: 1
+    duration-seconds: 30
+    message: "&6&lRhitta hums as the sun rises. You feel faster."
+
+  noon:
+    enabled: true
+    time-ticks: 6000          # Minecraft day-time tick for noon
+    window-ticks: 40
+    effect: STRENGTH
+    amplifier: 0
+    duration-seconds: 30
+    message: "&6&lRhitta blazes under the noon sun. You feel stronger."
