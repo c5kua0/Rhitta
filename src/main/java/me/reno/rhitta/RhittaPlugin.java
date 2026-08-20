@@ -45,6 +45,7 @@ public class RhittaPlugin extends JavaPlugin {
     }
 
     public RhittaManager getRhittaManager() {
+
         return rhittaManager;
     }
 }
