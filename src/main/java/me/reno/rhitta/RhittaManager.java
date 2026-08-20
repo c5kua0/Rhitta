@@ -159,7 +159,7 @@ public class RhittaManager {
     }
 
     // =====================================================
-    // GIVE RHITTA
+    // GIVE / FORCE ONE RHITTA
     // =====================================================
 
     public void giveRhitta(Player player) {
@@ -168,61 +168,26 @@ public class RhittaManager {
             return;
         }
 
-        // Remove all duplicates first.
-        removeDuplicateRhittas(player);
+        owner = player.getUniqueId();
 
-        if (!hasRhitta(player)) {
-
-            player.getInventory().addItem(
-                    createRhitta()
-            );
-        }
-
-        owner =
-                player.getUniqueId();
-
-        // Make absolutely sure only ONE exists.
-        removeDuplicateRhittas(player);
+        /*
+         * FORCE EXACTLY ONE.
+         */
+        forceOneRhitta(player);
     }
 
-    // =====================================================
-    // HAS RHITTA
-    // =====================================================
+    public void forceOneRhitta(Player player) {
 
-    public boolean hasRhitta(Player player) {
-
-        if (player == null) {
-            return false;
-        }
-
-        for (ItemStack item :
-                player.getInventory()
-                        .getContents()) {
-
-            if (isRhitta(item)) {
-                return true;
-            }
-        }
-
-        return isRhitta(
-                player.getInventory()
-                        .getItemInOffHand()
-        );
-    }
-
-    // =====================================================
-    // REMOVE DUPLICATES
-    // =====================================================
-
-    public void removeDuplicateRhittas(
-            Player player) {
-
-        if (player == null) {
+        if (player == null ||
+                !isAllowedOwner(player)) {
             return;
         }
 
         boolean found = false;
 
+        /*
+         * MAIN INVENTORY + HOTBAR
+         */
         ItemStack[] contents =
                 player.getInventory()
                         .getContents();
@@ -231,112 +196,4 @@ public class RhittaManager {
              slot < contents.length;
              slot++) {
 
-            ItemStack item =
-                    contents[slot];
-
-            if (!isRhitta(item)) {
-                continue;
-            }
-
-            if (!found) {
-
-                // Keep exactly ONE.
-                item.setAmount(1);
-
-                found = true;
-
-            } else {
-
-                // Delete every other Rhitta.
-                player.getInventory()
-                        .setItem(slot, null);
-            }
-        }
-
-        ItemStack offhand =
-                player.getInventory()
-                        .getItemInOffHand();
-
-        if (isRhitta(offhand)) {
-
-            if (!found) {
-
-                offhand.setAmount(1);
-
-                found = true;
-
-            } else {
-
-                player.getInventory()
-                        .setItemInOffHand(null);
-            }
-        }
-    }
-
-    // =====================================================
-    // DEFENSE
-    // =====================================================
-
-    public int getDefense(Player player) {
-
-        return defense.getOrDefault(
-                player.getUniqueId(),
-                0
-        );
-    }
-
-    public void addDefense(Player player) {
-
-        UUID uuid =
-                player.getUniqueId();
-
-        int current =
-                defense.getOrDefault(
-                        uuid,
-                        0
-                );
-
-        defense.put(
-                uuid,
-                current + 1
-        );
-    }
-
-    // =====================================================
-    // RESURRECTION
-    // =====================================================
-
-    public boolean hasUsedResurrection(
-            Player player) {
-
-        Byte value =
-                player.getPersistentDataContainer()
-                        .get(
-                                resurrectionKey,
-                                PersistentDataType.BYTE
-                        );
-
-        return value != null
-                && value == (byte) 1;
-    }
-
-    public void markResurrectionUsed(
-            Player player) {
-
-        player.getPersistentDataContainer()
-                .set(
-                        resurrectionKey,
-                        PersistentDataType.BYTE,
-                        (byte) 1
-                );
-    }
-
-    public void resetResurrection(
-            Player player) {
-
-        player.getPersistentDataContainer()
-                .remove(
-                        resurrectionKey
-                );
-    }
-}
+            Item
