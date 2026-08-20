@@ -10,12 +10,12 @@ weapon:
   resurrection-defense: 8.0
 
 buffs:
-  check-interval-ticks: 20   # how often (in ticks) to check world time; 20 = every second
+  check-interval-ticks: 20
 
   sunrise:
     enabled: true
-    time-ticks: 0            # Minecraft day-time tick for sunrise
-    window-ticks: 40          # how wide a window counts as "at" sunrise
+    time-ticks: 0
+    window-ticks: 40
     effect: SPEED
     amplifier: 1
     duration-seconds: 30
@@ -23,7 +23,7 @@ buffs:
 
   noon:
     enabled: true
-    time-ticks: 6000          # Minecraft day-time tick for noon
+    time-ticks: 6000
     window-ticks: 40
     effect: STRENGTH
     amplifier: 0
