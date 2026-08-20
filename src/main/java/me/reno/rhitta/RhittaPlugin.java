@@ -16,18 +16,25 @@ public class RhittaPlugin extends JavaPlugin {
                 this
         );
 
-        RhittaCommand command = new RhittaCommand(this);
+        RhittaCommand command =
+                new RhittaCommand(this);
 
         if (getCommand("rhitta") != null) {
-            getCommand("rhitta").setExecutor(command);
+            getCommand("rhitta")
+                    .setExecutor(command);
         }
 
-        getLogger().info("Rhitta has been enabled!");
+        getLogger().info(
+                "Rhitta enabled!"
+        );
     }
 
     @Override
     public void onDisable() {
-        getLogger().info("Rhitta has been disabled!");
+
+        getLogger().info(
+                "Rhitta disabled!"
+        );
     }
 
     public RhittaManager getRhittaManager() {
