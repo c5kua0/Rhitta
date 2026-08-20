@@ -9,17 +9,24 @@ public class RhittaPlugin extends JavaPlugin {
     @Override
     public void onEnable() {
 
-        rhittaManager = new RhittaManager(this);
+        rhittaManager =
+                new RhittaManager(this);
 
-        getServer().getPluginManager().registerEvents(
-                new RhittaListener(this, rhittaManager),
-                this
-        );
+        getServer()
+                .getPluginManager()
+                .registerEvents(
+                        new RhittaListener(
+                                this,
+                                rhittaManager
+                        ),
+                        this
+                );
 
         RhittaCommand command =
                 new RhittaCommand(this);
 
         if (getCommand("rhitta") != null) {
+
             getCommand("rhitta")
                     .setExecutor(command);
         }
