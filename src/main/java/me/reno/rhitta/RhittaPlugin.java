@@ -8,44 +8,28 @@ public class RhittaPlugin extends JavaPlugin {
 
     @Override
     public void onEnable() {
+        saveDefaultConfig();
 
-        rhittaManager =
-                new RhittaManager(this);
+        this.rhittaManager = new RhittaManager(this);
 
-        getServer()
-                .getPluginManager()
-                .registerEvents(
-                        new RhittaListener(
-                                this,
-                                rhittaManager
-                        ),
-                        this
-                );
+        RhittaListener listener = new RhittaListener(this, rhittaManager);
+        getServer().getPluginManager().registerEvents(listener, this);
 
-        RhittaCommand command =
-                new RhittaCommand(this);
+        RhittaCommand command = new RhittaCommand(this);
+        getCommand("rhitta").setExecutor(command);
 
-        if (getCommand("rhitta") != null) {
+        // Sunrise / Noon buff scheduler
+        listener.startBuffScheduler();
 
-            getCommand("rhitta")
-                    .setExecutor(command);
-        }
-
-        getLogger().info(
-                "Rhitta enabled!"
-        );
+        getLogger().info("Rhitta enabled!");
     }
 
     @Override
     public void onDisable() {
-
-        getLogger().info(
-                "Rhitta disabled!"
-        );
+        getLogger().info("Rhitta disabled!");
     }
 
     public RhittaManager getRhittaManager() {
-
         return rhittaManager;
     }
 }
