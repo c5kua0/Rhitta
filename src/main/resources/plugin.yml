@@ -1,11 +1,9 @@
 name: Rhitta
-version: 1.0.0
+version: 1.0
 main: me.reno.rhitta.RhittaPlugin
 api-version: '26.1'
-author: Reno
-description: Rhitta weapon plugin
 
 commands:
   rhitta:
-    description: Rhitta weapon command
+    description: Restore Rhitta
     usage: /rhitta
