@@ -175,3 +175,148 @@ public class RhittaListener implements Listener {
         double damage = plugin.getConfig().getDouble("weapon.fireball-damage", 4.0);
         target.damage(damage);
     }
+
+
+    // ----------------------------------------------------------------
+    // Anti-duplication
+    // ----------------------------------------------------------------
+
+    @EventHandler
+    public void onPickup(EntityPickupItemEvent event) {
+        if (!(event.getEntity() instanceof Player)) return;
+        Player player = (Player) event.getEntity();
+        ItemStack stack = event.getItem().getItemStack();
+        if (!manager.isRhitta(stack)) return;
+
+        if (!manager.isOwner(player)) {
+            event.setCancelled(true);
+            return;
+        }
+        // Owner picking their own sword back up is fine, but never let
+        // them end up holding two.
+        if (manager.hasRhitta(player)) {
+            event.setCancelled(true);
+            event.getItem().remove();
+        }
+    }
+
+    @EventHandler
+    public void onDrop(PlayerDropItemEvent event) {
+        ItemStack stack = event.getItemDrop().getItemStack();
+        if (manager.isRhitta(stack)) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler
+    public void onInventoryClick(InventoryClickEvent event) {
+        ItemStack current = event.getCurrentItem();
+        ItemStack cursor = event.getCursor();
+        if (manager.isRhitta(current) || manager.isRhitta(cursor)) {
+            // Only block moves that would take it out of the player's own
+            // inventory (into another container, e.g. a chest/shulker box).
+            if (event.getClickedInventory() != null
+                    && !(event.getClickedInventory() instanceof PlayerInventory)) {
+                event.setCancelled(true);
+            }
+        }
+    }
+
+    @EventHandler
+    public void onInventoryDrag(InventoryDragEvent event) {
+        ItemStack cursor = event.getOldCursor();
+        if (manager.isRhitta(cursor)) {
+            if (event.getInventory() != null && !(event.getInventory() instanceof PlayerInventory)) {
+                event.setCancelled(true);
+            }
+        }
+    }
+
+    /**
+     * The actual dupe-on-death fix: strip every Rhitta copy from the
+     * death drop list, from EVERY slot (main inventory, armor, off hand),
+     * regardless of who died or whether they're the current owner.
+     */
+    @EventHandler
+    public void onDeath(PlayerDeathEvent event) {
+        List<ItemStack> drops = event.getDrops();
+        drops.removeIf(manager::isRhitta);
+    }
+
+    // ----------------------------------------------------------------
+    // Sunrise / Noon buffs
+    // ----------------------------------------------------------------
+
+    public void startBuffScheduler() {
+        int interval = plugin.getConfig().getInt("buffs.check-interval-ticks", 20);
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                checkTimeBuffs();
+            }
+        }.runTaskTimer(plugin, interval, interval);
+    }
+
+    private void checkTimeBuffs() {
+        for (Player player : plugin.getServer().getOnlinePlayers()) {
+            if (!manager.isOwner(player)) continue;
+            if (!manager.hasRhitta(player)) continue;
+
+            World world = player.getWorld();
+            long time = world.getTime();
+            long day = world.getFullTime() / 24000L;
+
+            applyTimeBuff(player, world, "sunrise", time, day, lastSunriseDay);
+            applyTimeBuff(player, world, "noon", time, day, lastNoonDay);
+        }
+    }
+
+    private void applyTimeBuff(Player player, World world, String key, long time, long day,
+                                Map<UUID, Long> lastTriggeredDay) {
+        String path = "buffs." + key;
+        if (!plugin.getConfig().getBoolean(path + ".enabled", false)) return;
+
+        long triggerTick = plugin.getConfig().getLong(path + ".time-ticks", 0L);
+        int window = plugin.getConfig().getInt(path + ".window-ticks", 40);
+
+        boolean inWindow = time >= triggerTick && time < triggerTick + window;
+        if (!inWindow) return;
+
+        Long lastDay = lastTriggeredDay.get(player.getUniqueId());
+        if (lastDay != null && lastDay == day) return; // already triggered today
+
+        lastTriggeredDay.put(player.getUniqueId(), day);
+
+        String effectName = plugin.getConfig().getString(path + ".effect", "SPEED");
+        PotionEffectType type = PotionEffectType.getByName(effectName);
+        if (type == null) {
+            plugin.getLogger().warning("Unknown potion effect '" + effectName + "' for buffs." + key + ".effect");
+            return;
+        }
+
+        int amplifier = plugin.getConfig().getInt(path + ".amplifier", 0);
+        int durationSeconds = plugin.getConfig().getInt(path + ".duration-seconds", 30);
+        int durationTicks = durationSeconds * 20;
+
+        player.addPotionEffect(new PotionEffect(type, durationTicks, amplifier, false, true, true));
+
+        String message = plugin.getConfig().getString(path + ".message", "");
+        if (message != null && !message.isEmpty()) {
+            player.sendMessage(ChatColor.translateAlternateColorCodes('&', message));
+        }
+    }
+
+    // ----------------------------------------------------------------
+    // Helpers
+    // ----------------------------------------------------------------
+
+    private ItemStack findRhitta(Player player) {
+        PlayerInventory inv = player.getInventory();
+        if (manager.isRhitta(inv.getItemInMainHand())) return inv.getItemInMainHand();
+        if (manager.isRhitta(inv.getItemInOffHand())) return inv.getItemInOffHand();
+        for (ItemStack stack : inv.getContents()) {
+            if (manager.isRhitta(stack)) return stack;
+        }
+        return null;
+    }
+}
