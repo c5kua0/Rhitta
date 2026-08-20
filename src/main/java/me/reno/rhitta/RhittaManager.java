@@ -21,7 +21,8 @@ public class RhittaManager {
     private final NamespacedKey rhittaIdKey;
     private final NamespacedKey resurrectionKey;
 
-    private final Map<UUID, Integer> defense = new HashMap<>();
+    private final Map<UUID, Integer> defense =
+            new HashMap<>();
 
     private UUID owner;
 
@@ -30,13 +31,22 @@ public class RhittaManager {
         this.plugin = plugin;
 
         rhittaKey =
-                new NamespacedKey(plugin, "rhitta");
+                new NamespacedKey(
+                        plugin,
+                        "rhitta"
+                );
 
         rhittaIdKey =
-                new NamespacedKey(plugin, "rhitta_id");
+                new NamespacedKey(
+                        plugin,
+                        "rhitta_id"
+                );
 
         resurrectionKey =
-                new NamespacedKey(plugin, "resurrection_used");
+                new NamespacedKey(
+                        plugin,
+                        "resurrection_used"
+                );
     }
 
     // =====================================================
@@ -114,8 +124,9 @@ public class RhittaManager {
 
         return value != null
                 && value == (byte) 1
-                && ("RHITTA-" + plugin.getName())
-                .equals(id);
+                && (
+                    "RHITTA-" + plugin.getName()
+                ).equals(id);
     }
 
     // =====================================================
@@ -159,7 +170,7 @@ public class RhittaManager {
     }
 
     // =====================================================
-    // GIVE / FORCE ONE RHITTA
+    // GIVE RHITTA
     // =====================================================
 
     public void giveRhitta(Player player) {
@@ -168,26 +179,30 @@ public class RhittaManager {
             return;
         }
 
-        owner = player.getUniqueId();
+        owner =
+                player.getUniqueId();
 
-        /*
-         * FORCE EXACTLY ONE.
-         */
         forceOneRhitta(player);
     }
+
+    // =====================================================
+    // FORCE EXACTLY ONE RHITTA
+    // =====================================================
 
     public void forceOneRhitta(Player player) {
 
         if (player == null ||
                 !isAllowedOwner(player)) {
+
             return;
         }
 
         boolean found = false;
 
-        /*
-         * MAIN INVENTORY + HOTBAR
-         */
+        // =================================================
+        // MAIN INVENTORY + HOTBAR
+        // =================================================
+
         ItemStack[] contents =
                 player.getInventory()
                         .getContents();
@@ -196,4 +211,190 @@ public class RhittaManager {
              slot < contents.length;
              slot++) {
 
-            Item
+            ItemStack item =
+                    contents[slot];
+
+            if (!isRhitta(item)) {
+                continue;
+            }
+
+            if (!found) {
+
+                /*
+                 * Keep the first Rhitta.
+                 *
+                 * Force stack size to 1.
+                 */
+                item.setAmount(1);
+
+                found = true;
+
+            } else {
+
+                /*
+                 * Delete every duplicate.
+                 */
+                player.getInventory()
+                        .setItem(
+                                slot,
+                                null
+                        );
+            }
+        }
+
+        // =================================================
+        // OFFHAND
+        // =================================================
+
+        ItemStack offhand =
+                player.getInventory()
+                        .getItemInOffHand();
+
+        if (isRhitta(offhand)) {
+
+            if (!found) {
+
+                offhand.setAmount(1);
+
+                found = true;
+
+            } else {
+
+                player.getInventory()
+                        .setItemInOffHand(
+                                null
+                        );
+            }
+        }
+
+        // =================================================
+        // CREATE IF NONE EXISTS
+        // =================================================
+
+        if (!found) {
+
+            ItemStack rhitta =
+                    createRhitta();
+
+            rhitta.setAmount(1);
+
+            player.getInventory()
+                    .addItem(rhitta);
+        }
+
+        owner =
+                player.getUniqueId();
+    }
+
+    // =====================================================
+    // HAS RHITTA
+    // =====================================================
+
+    public boolean hasRhitta(Player player) {
+
+        if (player == null) {
+            return false;
+        }
+
+        for (ItemStack item :
+                player.getInventory()
+                        .getContents()) {
+
+            if (isRhitta(item)) {
+                return true;
+            }
+        }
+
+        return isRhitta(
+                player.getInventory()
+                        .getItemInOffHand()
+        );
+    }
+
+    // =====================================================
+    // DEFENSE
+    // =====================================================
+
+    public int getDefense(Player player) {
+
+        if (player == null) {
+            return 0;
+        }
+
+        return defense.getOrDefault(
+                player.getUniqueId(),
+                0
+        );
+    }
+
+    public void addDefense(Player player) {
+
+        if (player == null) {
+            return;
+        }
+
+        UUID uuid =
+                player.getUniqueId();
+
+        int current =
+                defense.getOrDefault(
+                        uuid,
+                        0
+                );
+
+        defense.put(
+                uuid,
+                current + 1
+        );
+    }
+
+    // =====================================================
+    // LOW-HEALTH POWER
+    // =====================================================
+
+    public boolean hasUsedResurrection(
+            Player player) {
+
+        if (player == null) {
+            return false;
+        }
+
+        Byte value =
+                player.getPersistentDataContainer()
+                        .get(
+                                resurrectionKey,
+                                PersistentDataType.BYTE
+                        );
+
+        return value != null
+                && value == (byte) 1;
+    }
+
+    public void markResurrectionUsed(
+            Player player) {
+
+        if (player == null) {
+            return;
+        }
+
+        player.getPersistentDataContainer()
+                .set(
+                        resurrectionKey,
+                        PersistentDataType.BYTE,
+                        (byte) 1
+                );
+    }
+
+    public void resetResurrection(
+            Player player) {
+
+        if (player == null) {
+            return;
+        }
+
+        player.getPersistentDataContainer()
+                .remove(
+                        resurrectionKey
+                );
+    }
+}
