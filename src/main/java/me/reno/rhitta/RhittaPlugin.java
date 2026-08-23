@@ -5,18 +5,21 @@ import org.bukkit.plugin.java.JavaPlugin;
 public class RhittaPlugin extends JavaPlugin {
 
     private RhittaManager rhittaManager;
-    private RhittaListener rhittaListener;
 
     @Override
     public void onEnable() {
         saveDefaultConfig();
 
-        this.rhittaManager = new RhittaManager(this);
-        this.rhittaListener = new RhittaListener(this, rhittaManager);
+        rhittaManager = new RhittaManager(this);
 
-        getServer().getPluginManager().registerEvents(rhittaListener, this);
+        RhittaListener listener =
+                new RhittaListener(this, rhittaManager);
 
-        RhittaCommand command = new RhittaCommand(this);
+        getServer().getPluginManager()
+                .registerEvents(listener, this);
+
+        RhittaCommand command =
+                new RhittaCommand(this);
 
         if (getCommand("rhitta") != null) {
             getCommand("rhitta").setExecutor(command);
@@ -33,9 +36,5 @@ public class RhittaPlugin extends JavaPlugin {
 
     public RhittaManager getRhittaManager() {
         return rhittaManager;
-    }
-
-    public RhittaListener getRhittaListener() {
-        return rhittaListener;
     }
 }
