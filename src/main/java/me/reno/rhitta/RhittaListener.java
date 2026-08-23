@@ -1,11 +1,14 @@
 package me.reno.rhitta;
 
+import org.bukkit.ChatColor;
+import org.bukkit.Location;
 import org.bukkit.entity.Fireball;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityPickupItemEvent;
@@ -17,7 +20,6 @@ import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
-import org.bukkit.event.block.Action;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
@@ -25,17 +27,26 @@ import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class RhittaListener implements Listener {
 
     private final RhittaPlugin plugin;
     private final RhittaManager manager;
 
-    private long lastFireball = 0L;
-
     private static final long FIREBALL_COOLDOWN = 3000L;
+    private static final long KING_AURA_COOLDOWN = 15000L;
 
-    // Exact Rhitta physical attack damage.
-    private static final double RHITTA_DAMAGE = 20.0;
+    private static final double PHYSICAL_ATTACK = 20.0;
+
+    private static final double LIFE_STEAL = 4.0;
+    private static final int DEFENSE_PER_HIT = 1;
+
+    private static final double KING_AURA_RADIUS = 8.0;
+    private static final double KING_AURA_DAMAGE = 4.0;
+
+    private final List<String> abilities = new ArrayList<>();
 
     public RhittaListener(
             RhittaPlugin plugin,
@@ -44,7 +55,8 @@ public class RhittaListener implements Listener {
         this.plugin = plugin;
         this.manager = manager;
 
-        startBuffTask();
+        abilities.add("FIREBALL");
+        abilities.add("KING_AURA");
     }
 
     // ============================================================
@@ -61,10 +73,6 @@ public class RhittaListener implements Listener {
         }
 
         manager.forceOneRhitta(player);
-
-        if (manager.isBuffsEnabled()) {
-            applyRhittaBuffs(player);
-        }
     }
 
     // ============================================================
@@ -76,30 +84,20 @@ public class RhittaListener implements Listener {
 
         Player player = event.getPlayer();
 
-        plugin.getServer()
-                .getScheduler()
-                .runTaskLater(
-                        plugin,
-                        () -> {
-
-                            manager.forceOneRhitta(player);
-
-                            if (manager.isBuffsEnabled()) {
-                                applyRhittaBuffs(player);
-                            }
-
-                        },
-                        1L
-                );
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                manager.forceOneRhitta(player);
+            }
+        }.runTaskLater(plugin, 1L);
     }
 
     // ============================================================
-    // RHITTA ATTACK
+    // NORMAL ATTACK
     // ============================================================
 
-    @EventHandler(priority = EventPriority.HIGHEST)
-    public void onAttack(
-            EntityDamageByEntityEvent event) {
+    @EventHandler(priority = EventPriority.HIGH)
+    public void onAttack(EntityDamageByEntityEvent event) {
 
         if (!(event.getDamager() instanceof Player)) {
             return;
@@ -119,30 +117,21 @@ public class RhittaListener implements Listener {
         /*
          * RHITTA PHYSICAL ATTACK
          *
-         * Base damage is set to 20.
-         *
-         * Armor and other Minecraft
-         * damage calculations can still
-         * reduce the final damage.
+         * Adds 20 damage to the normal
+         * Minecraft attack damage.
          */
-
-        event.setDamage(RHITTA_DAMAGE);
+        event.setDamage(
+                event.getDamage()
+                        + PHYSICAL_ATTACK
+        );
 
         // ========================================================
         // LIFE STEAL
         // ========================================================
 
-        double lifeSteal =
-                plugin.getConfig()
-                        .getDouble(
-                                "weapon.life-steal",
-                                2.0
-                        );
-
         double health =
                 Math.min(
-                        player.getHealth()
-                                + lifeSteal,
+                        player.getHealth() + LIFE_STEAL,
                         player.getMaxHealth()
                 );
 
@@ -152,164 +141,31 @@ public class RhittaListener implements Listener {
         // DEFENSE GROWTH
         // ========================================================
 
-        int defense =
-                plugin.getConfig()
-                        .getInt(
-                                "weapon.defense-per-hit",
-                                1
-                        );
-
         manager.addDefense(
                 player,
-                defense
+                DEFENSE_PER_HIT
         );
     }
 
     // ============================================================
-    // RHITTA BUFFS
-    // ============================================================
-
-    private void startBuffTask() {
-
-        new BukkitRunnable() {
-
-            @Override
-            public void run() {
-
-                for (Player player :
-                        plugin.getServer()
-                                .getOnlinePlayers()) {
-
-                    if (!manager.isOwner(player)) {
-                        continue;
-                    }
-
-                    if (!manager.isBuffsEnabled()) {
-                        removeRhittaBuffs(player);
-                        continue;
-                    }
-
-                    if (!manager.hasRhitta(player)) {
-                        removeRhittaBuffs(player);
-                        continue;
-                    }
-
-                    applyRhittaBuffs(player);
-                }
-            }
-
-        }.runTaskTimer(
-                plugin,
-                0L,
-                40L
-        );
-    }
-
-    private void applyRhittaBuffs(Player player) {
-
-        /*
-         * Strength I
-         */
-        player.addPotionEffect(
-                new PotionEffect(
-                        PotionEffectType.STRENGTH,
-                        80,
-                        0,
-                        false,
-                        false,
-                        false
-                )
-        );
-
-        /*
-         * Resistance II
-         *
-         * Amplifier 1 = Level II
-         */
-        player.addPotionEffect(
-                new PotionEffect(
-                        PotionEffectType.RESISTANCE,
-                        80,
-                        1,
-                        false,
-                        false,
-                        false
-                )
-        );
-
-        /*
-         * Speed I
-         */
-        player.addPotionEffect(
-                new PotionEffect(
-                        PotionEffectType.SPEED,
-                        80,
-                        0,
-                        false,
-                        false,
-                        false
-                )
-        );
-
-        /*
-         * Regeneration I
-         */
-        player.addPotionEffect(
-                new PotionEffect(
-                        PotionEffectType.REGENERATION,
-                        80,
-                        0,
-                        false,
-                        false,
-                        false
-                )
-        );
-    }
-
-    private void removeRhittaBuffs(Player player) {
-
-        player.removePotionEffect(
-                PotionEffectType.STRENGTH
-        );
-
-        player.removePotionEffect(
-                PotionEffectType.RESISTANCE
-        );
-
-        player.removePotionEffect(
-                PotionEffectType.SPEED
-        );
-
-        player.removePotionEffect(
-                PotionEffectType.REGENERATION
-        );
-    }
-
-    // ============================================================
-    // FIREBALL
+    // RIGHT CLICK
     // ============================================================
 
     @EventHandler
-    public void onInteract(
-            PlayerInteractEvent event) {
+    public void onInteract(PlayerInteractEvent event) {
 
-        if (event.getHand()
-                != EquipmentSlot.HAND) {
-
+        if (event.getHand() != EquipmentSlot.HAND) {
             return;
         }
 
-        Action action =
-                event.getAction();
+        Action action = event.getAction();
 
-        if (action != Action.RIGHT_CLICK_AIR
-                && action != Action.RIGHT_CLICK_BLOCK) {
-
+        if (action != Action.RIGHT_CLICK_AIR &&
+                action != Action.RIGHT_CLICK_BLOCK) {
             return;
         }
 
-        Player player =
-                event.getPlayer();
+        Player player = event.getPlayer();
 
         ItemStack item =
                 player.getInventory()
@@ -319,62 +175,173 @@ public class RhittaListener implements Listener {
             return;
         }
 
+        event.setCancelled(true);
+
         /*
-         * Fireball only works when:
+         * NORMAL RIGHT CLICK
          *
-         * /rhitta 0
+         * Changes selected ability.
+         */
+        if (!player.isSneaking()) {
+
+            cycleAbility(player);
+
+            return;
+        }
+
+        /*
+         * SHIFT + RIGHT CLICK
          *
-         * is active.
+         * Activates selected ability.
          */
 
-        if (!"0".equals(
-                manager.getActiveAbility(player))) {
+        String ability =
+                manager.getActiveAbility(player);
+
+        if (ability == null) {
+
+            manager.setAbilityActive(
+                    player,
+                    abilities.get(0)
+            );
+
+            ability =
+                    abilities.get(0);
+        }
+
+        activateAbility(
+                player,
+                ability
+        );
+    }
+
+    // ============================================================
+    // CYCLE ABILITY
+    // ============================================================
+
+    private void cycleAbility(Player player) {
+
+        String current =
+                manager.getActiveAbility(player);
+
+        int index = -1;
+
+        if (current != null) {
+            index =
+                    abilities.indexOf(
+                            current
+                    );
+        }
+
+        index++;
+
+        if (index >= abilities.size()) {
+            index = 0;
+        }
+
+        String next =
+                abilities.get(index);
+
+        manager.setAbilityActive(
+                player,
+                next
+        );
+
+        player.sendMessage(
+                ChatColor.GOLD +
+                "Rhitta Ability Selected: " +
+                ChatColor.YELLOW +
+                formatAbility(next)
+        );
+    }
+
+    // ============================================================
+    // ACTIVATE ABILITY
+    // ============================================================
+
+    private void activateAbility(
+            Player player,
+            String ability) {
+
+        switch (ability.toUpperCase()) {
+
+            case "FIREBALL":
+                activateFireball(player);
+                break;
+
+            case "KING_AURA":
+                activateKingAura(player);
+                break;
+
+            default:
+                player.sendMessage(
+                        ChatColor.RED +
+                        "Unknown Rhitta ability."
+                );
+                break;
+        }
+    }
+
+    // ============================================================
+    // FIREBALL
+    // ============================================================
+
+    private void activateFireball(Player player) {
+
+        if (manager.isOnCooldown(
+                player,
+                "FIREBALL")) {
+
+            sendCooldown(
+                    player,
+                    "FIREBALL"
+            );
 
             return;
         }
 
-        long now =
-                System.currentTimeMillis();
+        manager.setCooldown(
+                player,
+                "FIREBALL",
+                FIREBALL_COOLDOWN
+        );
 
-        if (now - lastFireball
-                < FIREBALL_COOLDOWN) {
-
-            return;
-        }
-
-        lastFireball = now;
-
-        var eye =
+        Location eye =
                 player.getEyeLocation();
 
         var direction =
                 eye.getDirection()
                         .normalize();
 
-        var location =
+        Location spawn =
                 eye.clone()
                         .add(
-                                direction.clone()
+                                direction
+                                        .clone()
                                         .multiply(1.0)
                         );
 
         Fireball fireball =
                 player.getWorld()
                         .spawn(
-                                location,
+                                spawn,
                                 Fireball.class
                         );
 
         fireball.setShooter(player);
         fireball.setDirection(direction);
+
         fireball.setYield(0F);
         fireball.setIsIncendiary(false);
 
-        event.setCancelled(true);
+        player.sendMessage(
+                ChatColor.GOLD +
+                "☀ Rhitta Fireball!"
+        );
     }
 
     // ============================================================
-    // FIREBALL DAMAGE
+    // FIREBALL HIT
     // ============================================================
 
     @EventHandler
@@ -383,7 +350,6 @@ public class RhittaListener implements Listener {
 
         if (!(event.getEntity()
                 instanceof Fireball)) {
-
             return;
         }
 
@@ -392,15 +358,16 @@ public class RhittaListener implements Listener {
 
         if (!(fireball.getShooter()
                 instanceof Player)) {
-
             return;
         }
 
         if (!(event.getHitEntity()
                 instanceof LivingEntity)) {
-
             return;
         }
+
+        Player shooter =
+                (Player) fireball.getShooter();
 
         LivingEntity target =
                 (LivingEntity)
@@ -415,9 +382,146 @@ public class RhittaListener implements Listener {
 
         target.damage(
                 damage,
-                (Player)
-                        fireball.getShooter()
+                shooter
         );
+    }
+
+    // ============================================================
+    // KING AURA
+    // ============================================================
+
+    private void activateKingAura(Player player) {
+
+        if (manager.isOnCooldown(
+                player,
+                "KING_AURA")) {
+
+            sendCooldown(
+                    player,
+                    "KING_AURA"
+            );
+
+            return;
+        }
+
+        manager.setCooldown(
+                player,
+                "KING_AURA",
+                KING_AURA_COOLDOWN
+        );
+
+        int affected = 0;
+
+        for (LivingEntity entity :
+                player.getWorld()
+                        .getLivingEntities()) {
+
+            if (entity.equals(player)) {
+                continue;
+            }
+
+            if (entity.getLocation()
+                    .distance(player.getLocation())
+                    > KING_AURA_RADIUS) {
+                continue;
+            }
+
+            if (entity instanceof Player) {
+
+                /*
+                 * Don't attack other players.
+                 * This keeps the aura safer
+                 * for multiplayer.
+                 */
+                continue;
+            }
+
+            entity.damage(
+                    KING_AURA_DAMAGE,
+                    player
+            );
+
+            entity.addPotionEffect(
+                    new PotionEffect(
+                            PotionEffectType.WEAKNESS,
+                            20 * 5,
+                            0,
+                            false,
+                            true,
+                            true
+                    )
+            );
+
+            entity.addPotionEffect(
+                    new PotionEffect(
+                            PotionEffectType.SLOWNESS,
+                            20 * 3,
+                            1,
+                            false,
+                            true,
+                            true
+                    )
+            );
+
+            affected++;
+        }
+
+        player.sendMessage(
+                ChatColor.GOLD +
+                "♛ KING AURA unleashed! " +
+                ChatColor.YELLOW +
+                affected +
+                " enemies affected."
+        );
+    }
+
+    // ============================================================
+    // COOLDOWN MESSAGE
+    // ============================================================
+
+    private void sendCooldown(
+            Player player,
+            String ability) {
+
+        long remaining =
+                manager.getCooldownRemaining(
+                        player,
+                        ability
+                );
+
+        double seconds =
+                remaining / 1000.0;
+
+        player.sendMessage(
+                ChatColor.RED +
+                formatAbility(ability) +
+                " is on cooldown: " +
+                String.format(
+                        "%.1f",
+                        seconds
+                ) +
+                "s"
+        );
+    }
+
+    private String formatAbility(
+            String ability) {
+
+        if (ability == null) {
+            return "None";
+        }
+
+        switch (ability.toUpperCase()) {
+
+            case "KING_AURA":
+                return "King Aura";
+
+            case "FIREBALL":
+                return "Fireball";
+
+            default:
+                return ability;
+        }
     }
 
     // ============================================================
@@ -430,7 +534,6 @@ public class RhittaListener implements Listener {
 
         if (!(event.getEntity()
                 instanceof Player)) {
-
             return;
         }
 
@@ -472,11 +575,9 @@ public class RhittaListener implements Listener {
                 event.getItemDrop()
                         .getItemStack();
 
-        if (!manager.isRhitta(item)) {
-            return;
+        if (manager.isRhitta(item)) {
+            event.setCancelled(true);
         }
-
-        event.setCancelled(true);
     }
 
     // ============================================================
@@ -495,7 +596,6 @@ public class RhittaListener implements Listener {
 
         if (!manager.isRhitta(current)
                 && !manager.isRhitta(cursor)) {
-
             return;
         }
 
@@ -535,23 +635,18 @@ public class RhittaListener implements Listener {
 
         event.getDrops()
                 .removeIf(manager::isRhitta);
-
-        Player player = event.getEntity();
-
-        removeRhittaBuffs(player);
     }
 
     // ============================================================
     // DEFENSE
     // ============================================================
 
-    @EventHandler(priority = EventPriority.HIGHEST)
+    @EventHandler(priority = EventPriority.HIGH)
     public void onDamage(
             EntityDamageEvent event) {
 
         if (!(event.getEntity()
                 instanceof Player)) {
-
             return;
         }
 
@@ -572,7 +667,7 @@ public class RhittaListener implements Listener {
         /*
          * 1 defense = 1% damage reduction.
          *
-         * Maximum reduction = 80%.
+         * Maximum = 80%.
          */
 
         double reduction =
