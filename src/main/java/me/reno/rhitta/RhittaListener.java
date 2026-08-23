@@ -1,13 +1,11 @@
 package me.reno.rhitta;
 
-import org.bukkit.ChatColor;
 import org.bukkit.entity.Fireball;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
-import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityPickupItemEvent;
@@ -19,19 +17,19 @@ import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
+import org.bukkit.event.block.Action;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
-import org.bukkit.potion.PotionEffect;
-import org.bukkit.potion.PotionEffectType;
 
 public class RhittaListener implements Listener {
 
     private final RhittaPlugin plugin;
     private final RhittaManager manager;
 
-    private static final long FIREBALL_COOLDOWN = 3000L;
     private long lastFireball = 0L;
+
+    private static final long FIREBALL_COOLDOWN = 3000L;
 
     public RhittaListener(
             RhittaPlugin plugin,
@@ -76,11 +74,12 @@ public class RhittaListener implements Listener {
     }
 
     // ============================================================
-    // LIFE STEAL + DEFENSE
+    // RHITTA ATTACK
     // ============================================================
 
     @EventHandler
-    public void onHit(EntityDamageByEntityEvent event) {
+    public void onAttack(
+            EntityDamageByEntityEvent event) {
 
         if (!(event.getDamager() instanceof Player)) {
             return;
@@ -97,7 +96,7 @@ public class RhittaListener implements Listener {
             return;
         }
 
-        // Life steal
+        // LIFE STEAL
         double lifeSteal =
                 plugin.getConfig()
                         .getDouble(
@@ -105,16 +104,16 @@ public class RhittaListener implements Listener {
                                 4.0
                         );
 
-        double newHealth =
+        double health =
                 Math.min(
                         player.getHealth()
                                 + lifeSteal,
                         player.getMaxHealth()
                 );
 
-        player.setHealth(newHealth);
+        player.setHealth(health);
 
-        // Defense growth
+        // DEFENSE GROWTH
         int defense =
                 plugin.getConfig()
                         .getInt(
@@ -133,10 +132,12 @@ public class RhittaListener implements Listener {
     // ============================================================
 
     @EventHandler
-    public void onInteract(PlayerInteractEvent event) {
+    public void onInteract(
+            PlayerInteractEvent event) {
 
         if (event.getHand()
                 != EquipmentSlot.HAND) {
+
             return;
         }
 
@@ -145,6 +146,7 @@ public class RhittaListener implements Listener {
 
         if (action != Action.RIGHT_CLICK_AIR
                 && action != Action.RIGHT_CLICK_BLOCK) {
+
             return;
         }
 
@@ -160,13 +162,17 @@ public class RhittaListener implements Listener {
         }
 
         /*
-         * Fireball ONLY works when
+         * Fireball is not automatic.
+         *
+         * It only works when the player
+         * activates:
          *
          * /rhitta 0
-         *
-         * is active.
          */
-        if (!manager.isFireballMode(player)) {
+
+        if (!"0".equals(
+                manager.getActiveAbility(player))) {
+
             return;
         }
 
@@ -188,22 +194,24 @@ public class RhittaListener implements Listener {
                 eye.getDirection()
                         .normalize();
 
-        var spawnLocation =
+        var location =
                 eye.clone()
                         .add(
-                                direction.clone()
+                                direction
+                                        .clone()
                                         .multiply(1.0)
                         );
 
         Fireball fireball =
                 player.getWorld()
                         .spawn(
-                                spawnLocation,
+                                location,
                                 Fireball.class
                         );
 
         fireball.setShooter(player);
         fireball.setDirection(direction);
+
         fireball.setYield(0F);
         fireball.setIsIncendiary(false);
 
@@ -211,7 +219,7 @@ public class RhittaListener implements Listener {
     }
 
     // ============================================================
-    // FIREBALL HIT
+    // FIREBALL DAMAGE
     // ============================================================
 
     @EventHandler
@@ -220,6 +228,7 @@ public class RhittaListener implements Listener {
 
         if (!(event.getEntity()
                 instanceof Fireball)) {
+
             return;
         }
 
@@ -228,11 +237,13 @@ public class RhittaListener implements Listener {
 
         if (!(fireball.getShooter()
                 instanceof Player)) {
+
             return;
         }
 
         if (!(event.getHitEntity()
                 instanceof LivingEntity)) {
+
             return;
         }
 
@@ -249,12 +260,13 @@ public class RhittaListener implements Listener {
 
         target.damage(
                 damage,
-                (Player) fireball.getShooter()
+                (Player)
+                        fireball.getShooter()
         );
     }
 
     // ============================================================
-    // PICKUP
+    // PICKUP PROTECTION
     // ============================================================
 
     @EventHandler
@@ -263,10 +275,164 @@ public class RhittaListener implements Listener {
 
         if (!(event.getEntity()
                 instanceof Player)) {
+
             return;
         }
 
         Player player =
                 (Player) event.getEntity();
 
-        ItemStack item
+        ItemStack item =
+                event.getItem()
+                        .getItemStack();
+
+        if (!manager.isRhitta(item)) {
+            return;
+        }
+
+        // Only the owner may possess Rhitta.
+        if (!manager.isOwner(player)) {
+
+            event.setCancelled(true);
+
+            return;
+        }
+
+        // Prevent a second copy.
+        if (manager.hasRhitta(player)) {
+
+            event.setCancelled(true);
+
+            event.getItem().remove();
+        }
+    }
+
+    // ============================================================
+    // DROP PROTECTION
+    // ============================================================
+
+    @EventHandler
+    public void onDrop(
+            PlayerDropItemEvent event) {
+
+        ItemStack item =
+                event.getItemDrop()
+                        .getItemStack();
+
+        if (!manager.isRhitta(item)) {
+            return;
+        }
+
+        event.setCancelled(true);
+    }
+
+    // ============================================================
+    // INVENTORY PROTECTION
+    // ============================================================
+
+    @EventHandler
+    public void onInventoryClick(
+            InventoryClickEvent event) {
+
+        ItemStack current =
+                event.getCurrentItem();
+
+        ItemStack cursor =
+                event.getCursor();
+
+        if (!manager.isRhitta(current)
+                && !manager.isRhitta(cursor)) {
+
+            return;
+        }
+
+        /*
+         * Don't allow Rhitta to be placed
+         * into chests, barrels, furnaces,
+         * shulkers, etc.
+         */
+
+        if (event.getClickedInventory() != null
+                && !(event.getClickedInventory()
+                instanceof PlayerInventory)) {
+
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler
+    public void onInventoryDrag(
+            InventoryDragEvent event) {
+
+        ItemStack cursor =
+                event.getOldCursor();
+
+        if (!manager.isRhitta(cursor)) {
+            return;
+        }
+
+        if (!(event.getInventory()
+                instanceof PlayerInventory)) {
+
+            event.setCancelled(true);
+        }
+    }
+
+    // ============================================================
+    // DEATH
+    // ============================================================
+
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onDeath(
+            PlayerDeathEvent event) {
+
+        event.getDrops()
+                .removeIf(manager::isRhitta);
+    }
+
+    // ============================================================
+    // DEFENSE
+    // ============================================================
+
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onDamage(
+            EntityDamageEvent event) {
+
+        if (!(event.getEntity()
+                instanceof Player)) {
+
+            return;
+        }
+
+        Player player =
+                (Player) event.getEntity();
+
+        if (!manager.hasRhitta(player)) {
+            return;
+        }
+
+        int defense =
+                manager.getDefense(player);
+
+        if (defense <= 0) {
+            return;
+        }
+
+        /*
+         * 1 defense = 1% damage reduction.
+         *
+         * Maximum reduction is 80%.
+         */
+
+        double reduction =
+                Math.min(
+                        defense * 0.01,
+                        0.80
+                );
+
+        event.setDamage(
+                event.getDamage()
+                        * (1.0 - reduction)
+        );
+    }
+}
