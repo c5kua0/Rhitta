@@ -21,6 +21,9 @@ import org.bukkit.event.block.Action;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
+import org.bukkit.scheduler.BukkitRunnable;
 
 public class RhittaListener implements Listener {
 
@@ -31,12 +34,17 @@ public class RhittaListener implements Listener {
 
     private static final long FIREBALL_COOLDOWN = 3000L;
 
+    // Exact Rhitta physical attack damage.
+    private static final double RHITTA_DAMAGE = 20.0;
+
     public RhittaListener(
             RhittaPlugin plugin,
             RhittaManager manager) {
 
         this.plugin = plugin;
         this.manager = manager;
+
+        startBuffTask();
     }
 
     // ============================================================
@@ -53,6 +61,10 @@ public class RhittaListener implements Listener {
         }
 
         manager.forceOneRhitta(player);
+
+        if (manager.isBuffsEnabled()) {
+            applyRhittaBuffs(player);
+        }
     }
 
     // ============================================================
@@ -68,7 +80,15 @@ public class RhittaListener implements Listener {
                 .getScheduler()
                 .runTaskLater(
                         plugin,
-                        () -> manager.forceOneRhitta(player),
+                        () -> {
+
+                            manager.forceOneRhitta(player);
+
+                            if (manager.isBuffsEnabled()) {
+                                applyRhittaBuffs(player);
+                            }
+
+                        },
                         1L
                 );
     }
@@ -77,7 +97,7 @@ public class RhittaListener implements Listener {
     // RHITTA ATTACK
     // ============================================================
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.HIGHEST)
     public void onAttack(
             EntityDamageByEntityEvent event) {
 
@@ -96,12 +116,27 @@ public class RhittaListener implements Listener {
             return;
         }
 
+        /*
+         * RHITTA PHYSICAL ATTACK
+         *
+         * Base damage is set to 20.
+         *
+         * Armor and other Minecraft
+         * damage calculations can still
+         * reduce the final damage.
+         */
+
+        event.setDamage(RHITTA_DAMAGE);
+
+        // ========================================================
         // LIFE STEAL
+        // ========================================================
+
         double lifeSteal =
                 plugin.getConfig()
                         .getDouble(
                                 "weapon.life-steal",
-                                4.0
+                                2.0
                         );
 
         double health =
@@ -113,7 +148,10 @@ public class RhittaListener implements Listener {
 
         player.setHealth(health);
 
+        // ========================================================
         // DEFENSE GROWTH
+        // ========================================================
+
         int defense =
                 plugin.getConfig()
                         .getInt(
@@ -124,6 +162,126 @@ public class RhittaListener implements Listener {
         manager.addDefense(
                 player,
                 defense
+        );
+    }
+
+    // ============================================================
+    // RHITTA BUFFS
+    // ============================================================
+
+    private void startBuffTask() {
+
+        new BukkitRunnable() {
+
+            @Override
+            public void run() {
+
+                for (Player player :
+                        plugin.getServer()
+                                .getOnlinePlayers()) {
+
+                    if (!manager.isOwner(player)) {
+                        continue;
+                    }
+
+                    if (!manager.isBuffsEnabled()) {
+                        removeRhittaBuffs(player);
+                        continue;
+                    }
+
+                    if (!manager.hasRhitta(player)) {
+                        removeRhittaBuffs(player);
+                        continue;
+                    }
+
+                    applyRhittaBuffs(player);
+                }
+            }
+
+        }.runTaskTimer(
+                plugin,
+                0L,
+                40L
+        );
+    }
+
+    private void applyRhittaBuffs(Player player) {
+
+        /*
+         * Strength I
+         */
+        player.addPotionEffect(
+                new PotionEffect(
+                        PotionEffectType.STRENGTH,
+                        80,
+                        0,
+                        false,
+                        false,
+                        false
+                )
+        );
+
+        /*
+         * Resistance II
+         *
+         * Amplifier 1 = Level II
+         */
+        player.addPotionEffect(
+                new PotionEffect(
+                        PotionEffectType.RESISTANCE,
+                        80,
+                        1,
+                        false,
+                        false,
+                        false
+                )
+        );
+
+        /*
+         * Speed I
+         */
+        player.addPotionEffect(
+                new PotionEffect(
+                        PotionEffectType.SPEED,
+                        80,
+                        0,
+                        false,
+                        false,
+                        false
+                )
+        );
+
+        /*
+         * Regeneration I
+         */
+        player.addPotionEffect(
+                new PotionEffect(
+                        PotionEffectType.REGENERATION,
+                        80,
+                        0,
+                        false,
+                        false,
+                        false
+                )
+        );
+    }
+
+    private void removeRhittaBuffs(Player player) {
+
+        player.removePotionEffect(
+                PotionEffectType.STRENGTH
+        );
+
+        player.removePotionEffect(
+                PotionEffectType.RESISTANCE
+        );
+
+        player.removePotionEffect(
+                PotionEffectType.SPEED
+        );
+
+        player.removePotionEffect(
+                PotionEffectType.REGENERATION
         );
     }
 
@@ -162,12 +320,11 @@ public class RhittaListener implements Listener {
         }
 
         /*
-         * Fireball is not automatic.
-         *
-         * It only works when the player
-         * activates:
+         * Fireball only works when:
          *
          * /rhitta 0
+         *
+         * is active.
          */
 
         if (!"0".equals(
@@ -197,8 +354,7 @@ public class RhittaListener implements Listener {
         var location =
                 eye.clone()
                         .add(
-                                direction
-                                        .clone()
+                                direction.clone()
                                         .multiply(1.0)
                         );
 
@@ -211,7 +367,6 @@ public class RhittaListener implements Listener {
 
         fireball.setShooter(player);
         fireball.setDirection(direction);
-
         fireball.setYield(0F);
         fireball.setIsIncendiary(false);
 
@@ -290,7 +445,6 @@ public class RhittaListener implements Listener {
             return;
         }
 
-        // Only the owner may possess Rhitta.
         if (!manager.isOwner(player)) {
 
             event.setCancelled(true);
@@ -298,7 +452,6 @@ public class RhittaListener implements Listener {
             return;
         }
 
-        // Prevent a second copy.
         if (manager.hasRhitta(player)) {
 
             event.setCancelled(true);
@@ -346,12 +499,6 @@ public class RhittaListener implements Listener {
             return;
         }
 
-        /*
-         * Don't allow Rhitta to be placed
-         * into chests, barrels, furnaces,
-         * shulkers, etc.
-         */
-
         if (event.getClickedInventory() != null
                 && !(event.getClickedInventory()
                 instanceof PlayerInventory)) {
@@ -388,6 +535,10 @@ public class RhittaListener implements Listener {
 
         event.getDrops()
                 .removeIf(manager::isRhitta);
+
+        Player player = event.getEntity();
+
+        removeRhittaBuffs(player);
     }
 
     // ============================================================
@@ -421,7 +572,7 @@ public class RhittaListener implements Listener {
         /*
          * 1 defense = 1% damage reduction.
          *
-         * Maximum reduction is 80%.
+         * Maximum reduction = 80%.
          */
 
         double reduction =
