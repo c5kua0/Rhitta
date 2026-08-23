@@ -1,9 +1,11 @@
 name: Rhitta
-version: 1.0.1
+version: 1.1.0
 main: me.reno.rhitta.RhittaPlugin
 api-version: '26.1'
 
 commands:
   rhitta:
-    description: Restore Rhitta
-    usage: /rhitta
+    description: Rhitta abilities and controls
+    usage: /rhitta <help|0|AD|KA|UE|PP|PJ|KAU|buffs|remove>
+    aliases:
+      - r
