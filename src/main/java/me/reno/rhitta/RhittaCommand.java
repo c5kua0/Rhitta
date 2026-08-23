@@ -4,19 +4,17 @@ import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
-import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+public class RhittaCommand
+        implements CommandExecutor {
 
-public class RhittaCommand implements CommandExecutor, TabCompleter {
+    private final RhittaPlugin plugin;
 
-    private final RhittaManager manager;
+    public RhittaCommand(
+            RhittaPlugin plugin) {
 
-    public RhittaCommand(RhittaPlugin plugin) {
-        this.manager = plugin.getRhittaManager();
+        this.plugin = plugin;
     }
 
     @Override
@@ -27,211 +25,164 @@ public class RhittaCommand implements CommandExecutor, TabCompleter {
             String[] args) {
 
         if (!(sender instanceof Player)) {
+
             sender.sendMessage(
                     ChatColor.RED +
-                    "Only players can use this command."
+                    "Only players can use Rhitta commands."
             );
+
             return true;
         }
 
-        Player player = (Player) sender;
+        Player player =
+                (Player) sender;
 
-        if (!manager.isAllowedOwner(player)) {
-            player.sendMessage(
-                    ChatColor.RED +
-                    "You are not the owner of Rhitta."
-            );
-            return true;
-        }
+        RhittaManager manager =
+                plugin.getRhittaManager();
+
+        // ========================================================
+        // HELP
+        // ========================================================
 
         if (args.length == 0 ||
                 args[0].equalsIgnoreCase("help")) {
 
             sendHelp(player);
+
             return true;
         }
 
-        switch (args[0].toLowerCase()) {
+        // ========================================================
+        // STATUS
+        // ========================================================
 
-            case "0":
-                activateFireball(player);
-                return true;
+        if (args[0].equalsIgnoreCase("status")) {
 
-            case "buffs":
-                toggleBuffs(player, args);
-                return true;
+            sendStatus(player);
 
-            case "remove":
-                removeDupes(player, args);
-                return true;
+            return true;
+        }
 
-            case "ad":
-            case "ka":
-            case "ue":
-            case "pp":
-            case "pj":
-            case "kau":
+        // ========================================================
+        // BUFF
+        // ========================================================
 
-                activateAbility(
-                        player,
-                        args[0].toUpperCase()
-                );
+        if (args[0].equalsIgnoreCase("buff")) {
 
-                return true;
-
-            default:
+            if (!manager.isOwner(player)) {
 
                 player.sendMessage(
                         ChatColor.RED +
-                        "Unknown Rhitta command."
-                );
-
-                player.sendMessage(
-                        ChatColor.YELLOW +
-                        "Use /rhitta help"
+                        "You are not the owner of Rhitta."
                 );
 
                 return true;
+            }
+
+            if (args.length < 2) {
+
+                player.sendMessage(
+                        ChatColor.YELLOW +
+                        "Usage: /rhitta buff <true|false>"
+                );
+
+                return true;
+            }
+
+            boolean enabled =
+                    Boolean.parseBoolean(
+                            args[1]
+                    );
+
+            manager.setBuffsEnabled(
+                    enabled
+            );
+
+            player.sendMessage(
+                    ChatColor.GOLD +
+                    "Rhitta buffs: " +
+                    (enabled
+                            ? ChatColor.GREEN +
+                            "ENABLED"
+                            : ChatColor.RED +
+                            "DISABLED")
+            );
+
+            return true;
         }
-    }
 
-    // ============================================================
-    // FIREBALL
-    // ============================================================
+        // ========================================================
+        // GIVE
+        // ========================================================
 
-    private void activateFireball(Player player) {
+        if (args[0].equalsIgnoreCase("give")) {
 
-        manager.setAbilityActive(player, "0");
+            if (!manager.isOwner(player)) {
+
+                player.sendMessage(
+                        ChatColor.RED +
+                        "You are not the owner of Rhitta."
+                );
+
+                return true;
+            }
+
+            manager.giveRhitta(player);
+
+            player.sendMessage(
+                    ChatColor.GOLD +
+                    "Rhitta restored!"
+            );
+
+            return true;
+        }
+
+        // ========================================================
+        // CLEAN
+        // ========================================================
+
+        if (args[0].equalsIgnoreCase("clean")) {
+
+            if (!manager.isOwner(player)) {
+
+                player.sendMessage(
+                        ChatColor.RED +
+                        "You are not the owner of Rhitta."
+                );
+
+                return true;
+            }
+
+            int removed =
+                    manager.removeDuplicates();
+
+            player.sendMessage(
+                    ChatColor.GOLD +
+                    "Rhitta cleanup complete. " +
+                    ChatColor.YELLOW +
+                    removed +
+                    ChatColor.GOLD +
+                    " duplicate item(s) removed."
+            );
+
+            return true;
+        }
+
+        // ========================================================
+        // UNKNOWN COMMAND
+        // ========================================================
 
         player.sendMessage(
-                ChatColor.GOLD +
-                "" +
-                ChatColor.BOLD +
-                "RHITTA"
+                ChatColor.RED +
+                "Unknown Rhitta command."
         );
 
         player.sendMessage(
                 ChatColor.YELLOW +
-                "Fireball Mode: " +
-                ChatColor.GREEN +
-                "ON"
+                "Use /rhitta help"
         );
 
-        player.sendMessage(
-                ChatColor.GRAY +
-                "Right-click with Rhitta to fire."
-        );
-    }
-
-    // ============================================================
-    // BUFFS
-    // ============================================================
-
-    private void toggleBuffs(
-            Player player,
-            String[] args) {
-
-        if (args.length < 2) {
-
-            player.sendMessage(
-                    ChatColor.YELLOW +
-                    "Usage: /rhitta buffs true|false"
-            );
-
-            return;
-        }
-
-        if (!args[1].equalsIgnoreCase("true")
-                && !args[1].equalsIgnoreCase("false")) {
-
-            player.sendMessage(
-                    ChatColor.RED +
-                    "Use true or false."
-            );
-
-            return;
-        }
-
-        boolean enabled =
-                Boolean.parseBoolean(args[1]);
-
-        manager.setBuffsEnabled(enabled);
-
-        player.sendMessage(
-                ChatColor.GOLD +
-                "Rhitta buffs: " +
-                (enabled
-                        ? ChatColor.GREEN + "ON"
-                        : ChatColor.RED + "OFF")
-        );
-    }
-
-    // ============================================================
-    // REMOVE DUPES
-    // ============================================================
-
-    private void removeDupes(
-            Player player,
-            String[] args) {
-
-        if (args.length < 2 ||
-                !args[1].equalsIgnoreCase("dupes")) {
-
-            player.sendMessage(
-                    ChatColor.YELLOW +
-                    "Usage: /rhitta remove dupes"
-            );
-
-            return;
-        }
-
-        int removed =
-                manager.removeDuplicates();
-
-        player.sendMessage(
-                ChatColor.GOLD +
-                "Rhitta dupe cleanup complete."
-        );
-
-        player.sendMessage(
-                ChatColor.GRAY +
-                "Removed copies: " +
-                ChatColor.WHITE +
-                removed
-        );
-    }
-
-    // ============================================================
-    // PRIDE ABILITIES
-    // ============================================================
-
-    private void activateAbility(
-            Player player,
-            String ability) {
-
-        manager.setAbilityActive(
-                player,
-                ability
-        );
-
-        player.sendMessage(
-                ChatColor.GOLD +
-                "" +
-                ChatColor.BOLD +
-                "RHITTA"
-        );
-
-        player.sendMessage(
-                ChatColor.YELLOW +
-                "Active ability: " +
-                ChatColor.WHITE +
-                ability
-        );
-
-        player.sendMessage(
-                ChatColor.GRAY +
-                "Previous ability has been turned off."
-        );
+        return true;
     }
 
     // ============================================================
@@ -244,162 +195,238 @@ public class RhittaCommand implements CommandExecutor, TabCompleter {
                 ChatColor.GOLD +
                 "" +
                 ChatColor.BOLD +
-                "========== RHITTA =========="
+                "===== RHITTA HELP ====="
         );
 
         player.sendMessage(
                 ChatColor.YELLOW +
-                "/rhitta help"
+                "/rhitta status" +
+                ChatColor.WHITE +
+                " - View your Rhitta status."
         );
 
         player.sendMessage(
-                ChatColor.GRAY +
-                "Shows this help menu."
+                ChatColor.YELLOW +
+                "/rhitta give" +
+                ChatColor.WHITE +
+                " - Restore Rhitta."
+        );
+
+        player.sendMessage(
+                ChatColor.YELLOW +
+                "/rhitta clean" +
+                ChatColor.WHITE +
+                " - Remove duplicate Rhittas."
+        );
+
+        player.sendMessage(
+                ChatColor.YELLOW +
+                "/rhitta buff <true|false>" +
+                ChatColor.WHITE +
+                " - Toggle Rhitta buffs."
         );
 
         player.sendMessage("");
 
         player.sendMessage(
-                ChatColor.YELLOW +
-                "/rhitta 0"
-                + ChatColor.GRAY +
-                " - Fireball"
+                ChatColor.GOLD +
+                "" +
+                ChatColor.BOLD +
+                "===== ABILITIES ====="
         );
 
         player.sendMessage(
                 ChatColor.YELLOW +
-                "/rhitta AD"
-                + ChatColor.GRAY +
-                " - Pride Ability"
+                "Left Click" +
+                ChatColor.WHITE +
+                " - Physical Attack +20, Life Steal and Defense Growth."
         );
 
         player.sendMessage(
                 ChatColor.YELLOW +
-                "/rhitta KA"
-                + ChatColor.GRAY +
-                " - Pride Ability"
+                "Right Click" +
+                ChatColor.WHITE +
+                " - Select the next ability."
         );
 
         player.sendMessage(
                 ChatColor.YELLOW +
-                "/rhitta UE"
-                + ChatColor.GRAY +
-                " - Pride Ability"
-        );
-
-        player.sendMessage(
-                ChatColor.YELLOW +
-                "/rhitta PP"
-                + ChatColor.GRAY +
-                " - Pride Ability"
-        );
-
-        player.sendMessage(
-                ChatColor.YELLOW +
-                "/rhitta PJ"
-                + ChatColor.GRAY +
-                " - Pride Ability"
-        );
-
-        player.sendMessage(
-                ChatColor.YELLOW +
-                "/rhitta KAU"
-                + ChatColor.GRAY +
-                " - Pride Ability"
+                "Shift + Right Click" +
+                ChatColor.WHITE +
+                " - Activate selected ability."
         );
 
         player.sendMessage("");
 
         player.sendMessage(
-                ChatColor.YELLOW +
-                "/rhitta buffs true"
-                + ChatColor.GRAY +
-                " - Enable buffs"
+                ChatColor.GOLD +
+                "🔥 Fireball" +
+                ChatColor.WHITE +
+                " - Fires a projectile that damages the target."
         );
 
         player.sendMessage(
-                ChatColor.YELLOW +
-                "/rhitta buffs false"
-                + ChatColor.GRAY +
-                " - Disable buffs"
-        );
-
-        player.sendMessage(
-                ChatColor.YELLOW +
-                "/rhitta remove dupes"
-                + ChatColor.GRAY +
-                " - Remove duplicate Rhittas"
+                ChatColor.GOLD +
+                "♛ King Aura" +
+                ChatColor.WHITE +
+                " - Damages and weakens nearby hostile mobs."
         );
 
         player.sendMessage(
                 ChatColor.GOLD +
                 "" +
                 ChatColor.BOLD +
-                "============================"
+                "======================"
         );
     }
 
     // ============================================================
-    // TAB COMPLETION
+    // STATUS
     // ============================================================
 
-    @Override
-    public List<String> onTabComplete(
-            CommandSender sender,
-            Command command,
-            String alias,
-            String[] args) {
+    private void sendStatus(Player player) {
 
-        if (args.length == 1) {
+        RhittaManager manager =
+                plugin.getRhittaManager();
 
-            List<String> commands =
-                    Arrays.asList(
-                            "help",
-                            "0",
-                            "AD",
-                            "KA",
-                            "UE",
-                            "PP",
-                            "PJ",
-                            "KAU",
-                            "buffs",
-                            "remove"
-                    );
+        player.sendMessage(
+                ChatColor.GOLD +
+                "" +
+                ChatColor.BOLD +
+                "===== RHITTA STATUS ====="
+        );
 
-            List<String> result =
-                    new ArrayList<>();
+        player.sendMessage(
+                ChatColor.YELLOW +
+                "Owner: " +
+                ChatColor.WHITE +
+                RhittaManager.OWNER_NAME
+        );
 
-            for (String value : commands) {
+        player.sendMessage(
+                ChatColor.YELLOW +
+                "Rhitta: " +
+                (manager.isOwner(player)
+                        && manager.hasRhitta(player)
+                        ? ChatColor.GREEN +
+                        "Owned"
+                        : ChatColor.RED +
+                        "Not Owned")
+        );
 
-                if (value.toLowerCase()
-                        .startsWith(
-                                args[0].toLowerCase()
-                        )) {
+        player.sendMessage(
+                ChatColor.YELLOW +
+                "Physical Attack: " +
+                ChatColor.WHITE +
+                "+20"
+        );
 
-                    result.add(value);
-                }
-            }
+        player.sendMessage(
+                ChatColor.YELLOW +
+                "Life Steal: " +
+                ChatColor.WHITE +
+                LIFE_STEAL_TEXT()
+        );
 
-            return result;
+        player.sendMessage(
+                ChatColor.YELLOW +
+                "Defense: " +
+                ChatColor.WHITE +
+                manager.getDefense(player)
+        );
+
+        String active =
+                manager.getActiveAbility(player);
+
+        player.sendMessage(
+                ChatColor.YELLOW +
+                "Selected Ability: " +
+                ChatColor.WHITE +
+                (active == null
+                        ? "None"
+                        : formatAbility(active))
+        );
+
+        player.sendMessage(
+                ChatColor.YELLOW +
+                "Buffs: " +
+                (manager.isBuffsEnabled()
+                        ? ChatColor.GREEN +
+                        "Enabled"
+                        : ChatColor.RED +
+                        "Disabled")
+        );
+
+        long fireball =
+                manager.getCooldownRemaining(
+                        player,
+                        "FIREBALL"
+                );
+
+        player.sendMessage(
+                ChatColor.YELLOW +
+                "Fireball: " +
+                cooldownText(fireball)
+        );
+
+        long aura =
+                manager.getCooldownRemaining(
+                        player,
+                        "KING_AURA"
+                );
+
+        player.sendMessage(
+                ChatColor.YELLOW +
+                "King Aura: " +
+                cooldownText(aura)
+        );
+
+        player.sendMessage(
+                ChatColor.GOLD +
+                "" +
+                ChatColor.BOLD +
+                "========================"
+        );
+    }
+
+    private String cooldownText(
+            long milliseconds) {
+
+        if (milliseconds <= 0) {
+
+            return ChatColor.GREEN +
+                    "Ready";
         }
 
-        if (args.length == 2 &&
-                args[0].equalsIgnoreCase("buffs")) {
+        return ChatColor.RED +
+                String.format(
+                        "%.1fs",
+                        milliseconds / 1000.0
+                );
+    }
 
-            return Arrays.asList(
-                    "true",
-                    "false"
-            );
+    private String formatAbility(
+            String ability) {
+
+        if (ability == null) {
+            return "None";
         }
 
-        if (args.length == 2 &&
-                args[0].equalsIgnoreCase("remove")) {
+        switch (ability.toUpperCase()) {
 
-            return Arrays.asList(
-                    "dupes"
-            );
+            case "FIREBALL":
+                return "Fireball";
+
+            case "KING_AURA":
+                return "King Aura";
+
+            default:
+                return ability;
         }
+    }
 
-        return new ArrayList<>();
+    private String LIFE_STEAL_TEXT() {
+
+        return "4 HP";
     }
 }
