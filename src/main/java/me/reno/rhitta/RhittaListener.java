@@ -63,6 +63,7 @@ public class RhittaListener implements Listener {
 
     private static final double PP_DAMAGE = 14.0;
     private static final double PJ_DAMAGE = 12.0;
+
     private static final double KAU_RADIUS = 12.0;
     private static final double KAU_DAMAGE = 20.0;
 
@@ -277,7 +278,7 @@ public class RhittaListener implements Listener {
     }
 
     // ============================================================
-    // ACTIVATE
+    // ACTIVATE ABILITY
     // ============================================================
 
     private void activateAbility(
@@ -381,6 +382,10 @@ public class RhittaListener implements Listener {
                 "🔥 FIREBALL!"
         );
     }
+
+    // ============================================================
+    // FIREBALL HIT
+    // ============================================================
 
     @EventHandler
     public void onFireballHit(
@@ -503,7 +508,7 @@ public class RhittaListener implements Listener {
         );
 
         player.sendMessage(
-                ChatColor.GRAY +
+                ChatColor.GRAY.toString() +
                 affected +
                 " enemy/enemies overwhelmed."
         );
@@ -534,7 +539,6 @@ public class RhittaListener implements Listener {
                 KA_COOLDOWN
         );
 
-        // Self buffs
         player.addPotionEffect(
                 new PotionEffect(
                         PotionEffectType.STRENGTH,
@@ -618,7 +622,7 @@ public class RhittaListener implements Listener {
         );
 
         player.sendMessage(
-                ChatColor.GRAY +
+                ChatColor.GRAY.toString() +
                 affected +
                 " enemies affected."
         );
@@ -774,7 +778,7 @@ public class RhittaListener implements Listener {
         );
 
         player.sendMessage(
-                ChatColor.GRAY +
+                ChatColor.GRAY.toString() +
                 hit +
                 " enemy/enemies punished."
         );
@@ -814,7 +818,6 @@ public class RhittaListener implements Listener {
 
         int hit = 0;
 
-        // Judgment beam
         for (double distance = 1.0;
              distance <= 12.0;
              distance += 0.5) {
@@ -861,7 +864,7 @@ public class RhittaListener implements Listener {
         );
 
         player.sendMessage(
-                ChatColor.GRAY +
+                ChatColor.GRAY.toString() +
                 hit +
                 " enemy/enemies judged."
         );
@@ -944,7 +947,6 @@ public class RhittaListener implements Listener {
             affected++;
         }
 
-        // Ultimate self-buff
         player.addPotionEffect(
                 new PotionEffect(
                         PotionEffectType.STRENGTH,
@@ -973,7 +975,7 @@ public class RhittaListener implements Listener {
         );
 
         player.sendMessage(
-                ChatColor.YELLOW +
+                ChatColor.YELLOW.toString() +
                 affected +
                 " enemies overwhelmed."
         );
