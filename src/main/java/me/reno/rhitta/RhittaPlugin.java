@@ -11,8 +11,7 @@ public class RhittaPlugin extends JavaPlugin {
 
         saveDefaultConfig();
 
-        rhittaManager =
-                new RhittaManager(this);
+        rhittaManager = new RhittaManager(this);
 
         RhittaListener listener =
                 new RhittaListener(
@@ -31,12 +30,16 @@ public class RhittaPlugin extends JavaPlugin {
                 new RhittaCommand(this);
 
         if (getCommand("rhitta") != null) {
+
             getCommand("rhitta")
                     .setExecutor(command);
+
+            // Only add setTabCompleter here if
+            // RhittaCommand implements TabCompleter.
         }
 
         getLogger().info(
-                "Rhitta enabled!"
+                "Rhitta 2.0 enabled!"
         );
     }
 
@@ -44,7 +47,7 @@ public class RhittaPlugin extends JavaPlugin {
     public void onDisable() {
 
         getLogger().info(
-                "Rhitta disabled!"
+                "Rhitta 2.0 disabled!"
         );
     }
 
