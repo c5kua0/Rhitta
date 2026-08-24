@@ -22,45 +22,35 @@ public class RhittaManager {
 
     private final RhittaPlugin plugin;
 
-    private final Map<UUID, Integer> defense =
-            new HashMap<>();
-
-    private final Map<UUID, String> activeAbilities =
-            new HashMap<>();
-
-    private final Map<String, Long> cooldowns =
-            new HashMap<>();
+    private final Map<UUID, Integer> defense = new HashMap<>();
+    private final Map<UUID, String> activeAbilities = new HashMap<>();
+    private final Map<String, Long> cooldowns = new HashMap<>();
 
     private final NamespacedKey rhittaKey;
     private final NamespacedKey rhittaIdKey;
 
-    private UUID owner;
     private long rhittaCounter = 0L;
-
     private boolean buffsEnabled;
 
     public RhittaManager(RhittaPlugin plugin) {
 
         this.plugin = plugin;
 
-        rhittaKey =
-                new NamespacedKey(
-                        plugin,
-                        "rhitta"
-                );
+        rhittaKey = new NamespacedKey(
+                plugin,
+                "rhitta"
+        );
 
-        rhittaIdKey =
-                new NamespacedKey(
-                        plugin,
-                        "rhitta_id"
-                );
+        rhittaIdKey = new NamespacedKey(
+                plugin,
+                "rhitta_id"
+        );
 
-        buffsEnabled =
-                plugin.getConfig()
-                        .getBoolean(
-                                "buffs.enabled-by-default",
-                                true
-                        );
+        buffsEnabled = plugin.getConfig()
+                .getBoolean(
+                        "buffs.enabled-by-default",
+                        true
+                );
     }
 
     // ============================================================
@@ -68,32 +58,17 @@ public class RhittaManager {
     // ============================================================
 
     public boolean isAllowedOwner(Player player) {
-
-        if (owner != null) {
-            return player.getUniqueId()
-                    .equals(owner);
-        }
-
-        if (player.getName()
-                .equalsIgnoreCase(OWNER_NAME)) {
-
-            owner = player.getUniqueId();
-
-            return true;
-        }
-
-        return false;
+        return player.getName()
+                .equalsIgnoreCase(OWNER_NAME);
     }
 
     public boolean isOwner(Player player) {
-
-        return owner != null &&
-                player.getUniqueId()
-                        .equals(owner);
+        return player.getName()
+                .equalsIgnoreCase(OWNER_NAME);
     }
 
-    public UUID getOwner() {
-        return owner;
+    public String getOwnerName() {
+        return OWNER_NAME;
     }
 
     // ============================================================
@@ -115,10 +90,10 @@ public class RhittaManager {
         }
 
         meta.setDisplayName(
-                ChatColor.GOLD +
-                "" +
-                ChatColor.BOLD +
-                "RHITTA"
+                ChatColor.GOLD
+                        + ""
+                        + ChatColor.BOLD
+                        + "RHITTA"
         );
 
         meta.setUnbreakable(true);
@@ -126,10 +101,10 @@ public class RhittaManager {
         rhittaCounter++;
 
         String id =
-                "RHITTA-" +
-                rhittaCounter +
-                "-" +
-                UUID.randomUUID();
+                "RHITTA-"
+                        + rhittaCounter
+                        + "-"
+                        + UUID.randomUUID();
 
         meta.getPersistentDataContainer()
                 .set(
@@ -152,9 +127,8 @@ public class RhittaManager {
 
     public boolean isRhitta(ItemStack item) {
 
-        if (item == null ||
-                item.getType().isAir()) {
-
+        if (item == null
+                || item.getType().isAir()) {
             return false;
         }
 
@@ -172,8 +146,8 @@ public class RhittaManager {
                                 PersistentDataType.BYTE
                         );
 
-        return flag != null &&
-                flag == (byte) 1;
+        return flag != null
+                && flag == (byte) 1;
     }
 
     // ============================================================
@@ -182,9 +156,11 @@ public class RhittaManager {
 
     public boolean hasRhitta(Player player) {
 
+        PlayerInventory inventory =
+                player.getInventory();
+
         for (ItemStack item :
-                player.getInventory()
-                        .getContents()) {
+                inventory.getContents()) {
 
             if (isRhitta(item)) {
                 return true;
@@ -192,8 +168,7 @@ public class RhittaManager {
         }
 
         return isRhitta(
-                player.getInventory()
-                        .getItemInOffHand()
+                inventory.getItemInOffHand()
         );
     }
 
@@ -201,20 +176,31 @@ public class RhittaManager {
 
         int count = 0;
 
+        PlayerInventory inventory =
+                player.getInventory();
+
         for (ItemStack item :
-                player.getInventory()
-                        .getContents()) {
+                inventory.getContents()) {
 
             if (isRhitta(item)) {
-                count++;
+                count += item.getAmount();
             }
         }
 
-        if (isRhitta(
-                player.getInventory()
-                        .getItemInOffHand())) {
+        ItemStack offhand =
+                inventory.getItemInOffHand();
 
-            count++;
+        if (isRhitta(offhand)) {
+            count += offhand.getAmount();
+        }
+
+        for (ItemStack item :
+                player.getEnderChest()
+                        .getContents()) {
+
+            if (isRhitta(item)) {
+                count += item.getAmount();
+            }
         }
 
         return count;
@@ -223,6 +209,10 @@ public class RhittaManager {
     public void giveRhitta(Player player) {
 
         if (!isOwner(player)) {
+            return;
+        }
+
+        if (hasRhitta(player)) {
             return;
         }
 
@@ -235,14 +225,18 @@ public class RhittaManager {
         if (inventory.getItemInMainHand()
                 .getType().isAir()) {
 
-            inventory.setItemInMainHand(rhitta);
+            inventory.setItemInMainHand(
+                    rhitta
+            );
             return;
         }
 
         if (inventory.getItemInOffHand()
                 .getType().isAir()) {
 
-            inventory.setItemInOffHand(rhitta);
+            inventory.setItemInOffHand(
+                    rhitta
+            );
             return;
         }
 
@@ -261,7 +255,7 @@ public class RhittaManager {
     }
 
     // ============================================================
-    // MANUAL DUPE REMOVER
+    // DUPLICATE REMOVAL
     // ============================================================
 
     public int removeDuplicates() {
@@ -281,7 +275,6 @@ public class RhittaManager {
             }
         }
 
-        // Remove dropped copies
         for (World world :
                 plugin.getServer().getWorlds()) {
 
@@ -297,7 +290,6 @@ public class RhittaManager {
 
                 if (!isRhitta(
                         dropped.getItemStack())) {
-
                     continue;
                 }
 
@@ -324,8 +316,8 @@ public class RhittaManager {
                 inventory.getContents();
 
         for (int i = 0;
-                i < contents.length;
-                i++) {
+             i < contents.length;
+             i++) {
 
             ItemStack item = contents[i];
 
@@ -339,7 +331,6 @@ public class RhittaManager {
             }
 
             removed += item.getAmount();
-
             contents[i] = null;
         }
 
@@ -354,29 +345,28 @@ public class RhittaManager {
                 kept = true;
             } else {
 
-                removed +=
-                        offhand.getAmount();
+                removed += offhand.getAmount();
 
-                inventory.setItemInOffHand(null);
+                inventory.setItemInOffHand(
+                        null
+                );
             }
         }
 
-        // Ender Chest
+        // Ender Chest copies are ALWAYS removed.
         ItemStack[] ender =
                 player.getEnderChest()
                         .getContents();
 
         for (int i = 0;
-                i < ender.length;
-                i++) {
+             i < ender.length;
+             i++) {
 
             if (!isRhitta(ender[i])) {
                 continue;
             }
 
-            removed +=
-                    ender[i].getAmount();
-
+            removed += ender[i].getAmount();
             ender[i] = null;
         }
 
@@ -401,16 +391,14 @@ public class RhittaManager {
                 inventory.getContents();
 
         for (int i = 0;
-                i < contents.length;
-                i++) {
+             i < contents.length;
+             i++) {
 
             if (!isRhitta(contents[i])) {
                 continue;
             }
 
-            removed +=
-                    contents[i].getAmount();
-
+            removed += contents[i].getAmount();
             contents[i] = null;
         }
 
@@ -421,8 +409,7 @@ public class RhittaManager {
 
         if (isRhitta(offhand)) {
 
-            removed +=
-                    offhand.getAmount();
+            removed += offhand.getAmount();
 
             inventory.setItemInOffHand(null);
         }
@@ -432,16 +419,14 @@ public class RhittaManager {
                         .getContents();
 
         for (int i = 0;
-                i < ender.length;
-                i++) {
+             i < ender.length;
+             i++) {
 
             if (!isRhitta(ender[i])) {
                 continue;
             }
 
-            removed +=
-                    ender[i].getAmount();
-
+            removed += ender[i].getAmount();
             ender[i] = null;
         }
 
@@ -493,7 +478,7 @@ public class RhittaManager {
     }
 
     // ============================================================
-    // ABILITIES
+    // ABILITY SELECTION
     // ============================================================
 
     public void setAbilityActive(
@@ -502,7 +487,7 @@ public class RhittaManager {
 
         activeAbilities.put(
                 player.getUniqueId(),
-                ability
+                ability.toLowerCase()
         );
     }
 
@@ -523,7 +508,7 @@ public class RhittaManager {
     }
 
     // ============================================================
-    // COOLDOWN
+    // COOLDOWNS
     // ============================================================
 
     private String cooldownKey(
@@ -531,7 +516,6 @@ public class RhittaManager {
             String ability) {
 
         return player.getUniqueId()
-                .toString()
                 + ":"
                 + ability.toUpperCase();
     }
@@ -548,9 +532,8 @@ public class RhittaManager {
                         )
                 );
 
-        return end != null &&
-                System.currentTimeMillis()
-                        < end;
+        return end != null
+                && System.currentTimeMillis() < end;
     }
 
     public void setCooldown(
@@ -586,8 +569,7 @@ public class RhittaManager {
 
         return Math.max(
                 0,
-                end -
-                System.currentTimeMillis()
+                end - System.currentTimeMillis()
         );
     }
 }
