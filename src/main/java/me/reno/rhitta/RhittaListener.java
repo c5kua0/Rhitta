@@ -25,7 +25,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
-import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.util.Vector;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -35,16 +35,36 @@ public class RhittaListener implements Listener {
     private final RhittaPlugin plugin;
     private final RhittaManager manager;
 
-    private static final long FIREBALL_COOLDOWN = 3000L;
-    private static final long KING_AURA_COOLDOWN = 15000L;
+    // ============================================================
+    // BALANCED MULTIPLAYER VALUES
+    // ============================================================
 
     private static final double PHYSICAL_ATTACK = 20.0;
-
     private static final double LIFE_STEAL = 4.0;
     private static final int DEFENSE_PER_HIT = 1;
 
-    private static final double KING_AURA_RADIUS = 8.0;
-    private static final double KING_AURA_DAMAGE = 4.0;
+    private static final long FIREBALL_COOLDOWN = 3000L;
+    private static final long AD_COOLDOWN = 20000L;
+    private static final long KA_COOLDOWN = 15000L;
+    private static final long UE_COOLDOWN = 30000L;
+    private static final long PP_COOLDOWN = 12000L;
+    private static final long PJ_COOLDOWN = 10000L;
+    private static final long KAU_COOLDOWN = 60000L;
+
+    private static final double FIREBALL_DAMAGE = 10.0;
+
+    private static final double AD_RADIUS = 8.0;
+    private static final double AD_DAMAGE = 5.0;
+
+    private static final double KA_RADIUS = 8.0;
+    private static final double KA_DAMAGE = 4.0;
+
+    private static final double UE_DURATION = 10.0;
+
+    private static final double PP_DAMAGE = 14.0;
+    private static final double PJ_DAMAGE = 12.0;
+    private static final double KAU_RADIUS = 12.0;
+    private static final double KAU_DAMAGE = 20.0;
 
     private final List<String> abilities = new ArrayList<>();
 
@@ -55,8 +75,13 @@ public class RhittaListener implements Listener {
         this.plugin = plugin;
         this.manager = manager;
 
-        abilities.add("FIREBALL");
-        abilities.add("KING_AURA");
+        abilities.add("fireball");
+        abilities.add("absolute_dominance");
+        abilities.add("king_aura");
+        abilities.add("unbreakable_ego");
+        abilities.add("punishment_proud");
+        abilities.add("prides_judgment");
+        abilities.add("kings_authority");
     }
 
     // ============================================================
@@ -84,20 +109,22 @@ public class RhittaListener implements Listener {
 
         Player player = event.getPlayer();
 
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                manager.forceOneRhitta(player);
-            }
-        }.runTaskLater(plugin, 1L);
+        plugin.getServer()
+                .getScheduler()
+                .runTaskLater(
+                        plugin,
+                        () -> manager.forceOneRhitta(player),
+                        1L
+                );
     }
 
     // ============================================================
-    // NORMAL ATTACK
+    // NORMAL RHITTA ATTACK
     // ============================================================
 
     @EventHandler(priority = EventPriority.HIGH)
-    public void onAttack(EntityDamageByEntityEvent event) {
+    public void onAttack(
+            EntityDamageByEntityEvent event) {
 
         if (!(event.getDamager() instanceof Player)) {
             return;
@@ -105,6 +132,10 @@ public class RhittaListener implements Listener {
 
         Player player =
                 (Player) event.getDamager();
+
+        if (!manager.isOwner(player)) {
+            return;
+        }
 
         ItemStack weapon =
                 player.getInventory()
@@ -114,33 +145,23 @@ public class RhittaListener implements Listener {
             return;
         }
 
-        /*
-         * RHITTA PHYSICAL ATTACK
-         *
-         * Adds 20 damage to the normal
-         * Minecraft attack damage.
-         */
+        // +20 physical attack
         event.setDamage(
                 event.getDamage()
                         + PHYSICAL_ATTACK
         );
 
-        // ========================================================
-        // LIFE STEAL
-        // ========================================================
-
-        double health =
+        // Life steal
+        double newHealth =
                 Math.min(
-                        player.getHealth() + LIFE_STEAL,
+                        player.getHealth()
+                                + LIFE_STEAL,
                         player.getMaxHealth()
                 );
 
-        player.setHealth(health);
+        player.setHealth(newHealth);
 
-        // ========================================================
-        // DEFENSE GROWTH
-        // ========================================================
-
+        // Defense grows on every hit
         manager.addDefense(
                 player,
                 DEFENSE_PER_HIT
@@ -148,24 +169,32 @@ public class RhittaListener implements Listener {
     }
 
     // ============================================================
-    // RIGHT CLICK
+    // RIGHT CLICK / SHIFT RIGHT CLICK
     // ============================================================
 
     @EventHandler
-    public void onInteract(PlayerInteractEvent event) {
+    public void onInteract(
+            PlayerInteractEvent event) {
 
-        if (event.getHand() != EquipmentSlot.HAND) {
+        if (event.getHand()
+                != EquipmentSlot.HAND) {
             return;
         }
 
-        Action action = event.getAction();
+        Action action =
+                event.getAction();
 
-        if (action != Action.RIGHT_CLICK_AIR &&
-                action != Action.RIGHT_CLICK_BLOCK) {
+        if (action != Action.RIGHT_CLICK_AIR
+                && action != Action.RIGHT_CLICK_BLOCK) {
             return;
         }
 
-        Player player = event.getPlayer();
+        Player player =
+                event.getPlayer();
+
+        if (!manager.isOwner(player)) {
+            return;
+        }
 
         ItemStack item =
                 player.getInventory()
@@ -179,44 +208,42 @@ public class RhittaListener implements Listener {
 
         /*
          * NORMAL RIGHT CLICK
-         *
-         * Changes selected ability.
+         * = ACTIVATE
          */
         if (!player.isSneaking()) {
 
-            cycleAbility(player);
+            String ability =
+                    manager.getActiveAbility(player);
+
+            if (ability == null) {
+
+                manager.setAbilityActive(
+                        player,
+                        abilities.get(0)
+                );
+
+                ability =
+                        abilities.get(0);
+            }
+
+            activateAbility(
+                    player,
+                    ability
+            );
 
             return;
         }
 
         /*
          * SHIFT + RIGHT CLICK
-         *
-         * Activates selected ability.
+         * = SELECT / CYCLE
          */
 
-        String ability =
-                manager.getActiveAbility(player);
-
-        if (ability == null) {
-
-            manager.setAbilityActive(
-                    player,
-                    abilities.get(0)
-            );
-
-            ability =
-                    abilities.get(0);
-        }
-
-        activateAbility(
-                player,
-                ability
-        );
+        cycleAbility(player);
     }
 
     // ============================================================
-    // CYCLE ABILITY
+    // SELECT ABILITY
     // ============================================================
 
     private void cycleAbility(Player player) {
@@ -224,14 +251,8 @@ public class RhittaListener implements Listener {
         String current =
                 manager.getActiveAbility(player);
 
-        int index = -1;
-
-        if (current != null) {
-            index =
-                    abilities.indexOf(
-                            current
-                    );
-        }
+        int index =
+                abilities.indexOf(current);
 
         index++;
 
@@ -249,28 +270,52 @@ public class RhittaListener implements Listener {
 
         player.sendMessage(
                 ChatColor.GOLD +
-                "Rhitta Ability Selected: " +
-                ChatColor.YELLOW +
-                formatAbility(next)
+                "⚔ Rhitta Selected: "
+                + ChatColor.YELLOW
+                + formatAbility(next)
         );
     }
 
     // ============================================================
-    // ACTIVATE ABILITY
+    // ACTIVATE
     // ============================================================
 
     private void activateAbility(
             Player player,
             String ability) {
 
-        switch (ability.toUpperCase()) {
+        if (ability == null) {
+            return;
+        }
 
-            case "FIREBALL":
+        switch (ability.toLowerCase()) {
+
+            case "fireball":
                 activateFireball(player);
                 break;
 
-            case "KING_AURA":
+            case "absolute_dominance":
+                activateAbsoluteDominance(player);
+                break;
+
+            case "king_aura":
                 activateKingAura(player);
+                break;
+
+            case "unbreakable_ego":
+                activateUnbreakableEgo(player);
+                break;
+
+            case "punishment_proud":
+                activatePunishmentProud(player);
+                break;
+
+            case "prides_judgment":
+                activatePridesJudgment(player);
+                break;
+
+            case "kings_authority":
+                activateKingsAuthority(player);
                 break;
 
             default:
@@ -278,7 +323,6 @@ public class RhittaListener implements Listener {
                         ChatColor.RED +
                         "Unknown Rhitta ability."
                 );
-                break;
         }
     }
 
@@ -309,16 +353,15 @@ public class RhittaListener implements Listener {
         Location eye =
                 player.getEyeLocation();
 
-        var direction =
+        Vector direction =
                 eye.getDirection()
                         .normalize();
 
         Location spawn =
                 eye.clone()
                         .add(
-                                direction
-                                        .clone()
-                                        .multiply(1.0)
+                                direction.clone()
+                                        .multiply(1.2)
                         );
 
         Fireball fireball =
@@ -330,19 +373,14 @@ public class RhittaListener implements Listener {
 
         fireball.setShooter(player);
         fireball.setDirection(direction);
-
         fireball.setYield(0F);
         fireball.setIsIncendiary(false);
 
         player.sendMessage(
                 ChatColor.GOLD +
-                "☀ Rhitta Fireball!"
+                "🔥 FIREBALL!"
         );
     }
-
-    // ============================================================
-    // FIREBALL HIT
-    // ============================================================
 
     @EventHandler
     public void onFireballHit(
@@ -369,28 +407,114 @@ public class RhittaListener implements Listener {
         Player shooter =
                 (Player) fireball.getShooter();
 
+        if (!manager.isOwner(shooter)) {
+            return;
+        }
+
         LivingEntity target =
                 (LivingEntity)
                         event.getHitEntity();
 
-        double damage =
-                plugin.getConfig()
-                        .getDouble(
-                                "weapon.fireball-damage",
-                                4.0
-                        );
-
         target.damage(
-                damage,
+                FIREBALL_DAMAGE,
                 shooter
         );
     }
 
     // ============================================================
-    // KING AURA
+    // ABSOLUTE DOMINANCE
     // ============================================================
 
-    private void activateKingAura(Player player) {
+    private void activateAbsoluteDominance(
+            Player player) {
+
+        if (manager.isOnCooldown(
+                player,
+                "ABSOLUTE_DOMINANCE")) {
+
+            sendCooldown(
+                    player,
+                    "ABSOLUTE_DOMINANCE"
+            );
+
+            return;
+        }
+
+        manager.setCooldown(
+                player,
+                "ABSOLUTE_DOMINANCE",
+                AD_COOLDOWN
+        );
+
+        int affected = 0;
+
+        for (LivingEntity entity :
+                player.getWorld()
+                        .getLivingEntities()) {
+
+            if (entity.equals(player)) {
+                continue;
+            }
+
+            if (entity.getLocation()
+                    .distance(player.getLocation())
+                    > AD_RADIUS) {
+                continue;
+            }
+
+            if (entity instanceof Player
+                    && entity != player) {
+                continue;
+            }
+
+            entity.damage(
+                    AD_DAMAGE,
+                    player
+            );
+
+            entity.addPotionEffect(
+                    new PotionEffect(
+                            PotionEffectType.WEAKNESS,
+                            20 * 6,
+                            1,
+                            false,
+                            true,
+                            true
+                    )
+            );
+
+            entity.addPotionEffect(
+                    new PotionEffect(
+                            PotionEffectType.SLOWNESS,
+                            20 * 4,
+                            1,
+                            false,
+                            true,
+                            true
+                    )
+            );
+
+            affected++;
+        }
+
+        player.sendMessage(
+                ChatColor.DARK_RED +
+                "👑 ABSOLUTE DOMINANCE!"
+        );
+
+        player.sendMessage(
+                ChatColor.GRAY +
+                affected +
+                " enemy/enemies overwhelmed."
+        );
+    }
+
+    // ============================================================
+    // KING'S AURA
+    // ============================================================
+
+    private void activateKingAura(
+            Player player) {
 
         if (manager.isOnCooldown(
                 player,
@@ -407,7 +531,30 @@ public class RhittaListener implements Listener {
         manager.setCooldown(
                 player,
                 "KING_AURA",
-                KING_AURA_COOLDOWN
+                KA_COOLDOWN
+        );
+
+        // Self buffs
+        player.addPotionEffect(
+                new PotionEffect(
+                        PotionEffectType.STRENGTH,
+                        20 * 10,
+                        1,
+                        false,
+                        true,
+                        true
+                )
+        );
+
+        player.addPotionEffect(
+                new PotionEffect(
+                        PotionEffectType.RESISTANCE,
+                        20 * 10,
+                        1,
+                        false,
+                        true,
+                        true
+                )
         );
 
         int affected = 0;
@@ -422,22 +569,16 @@ public class RhittaListener implements Listener {
 
             if (entity.getLocation()
                     .distance(player.getLocation())
-                    > KING_AURA_RADIUS) {
+                    > KA_RADIUS) {
                 continue;
             }
 
             if (entity instanceof Player) {
-
-                /*
-                 * Don't attack other players.
-                 * This keeps the aura safer
-                 * for multiplayer.
-                 */
                 continue;
             }
 
             entity.damage(
-                    KING_AURA_DAMAGE,
+                    KA_DAMAGE,
                     player
             );
 
@@ -455,7 +596,7 @@ public class RhittaListener implements Listener {
             entity.addPotionEffect(
                     new PotionEffect(
                             PotionEffectType.SLOWNESS,
-                            20 * 3,
+                            20 * 4,
                             1,
                             false,
                             true,
@@ -468,15 +609,378 @@ public class RhittaListener implements Listener {
 
         player.sendMessage(
                 ChatColor.GOLD +
-                "♛ KING AURA unleashed! " +
+                "👑 KING'S AURA!"
+        );
+
+        player.sendMessage(
                 ChatColor.YELLOW +
+                "Strength II + Resistance II"
+        );
+
+        player.sendMessage(
+                ChatColor.GRAY +
                 affected +
                 " enemies affected."
         );
     }
 
     // ============================================================
-    // COOLDOWN MESSAGE
+    // UNBREAKABLE EGO
+    // ============================================================
+
+    private void activateUnbreakableEgo(
+            Player player) {
+
+        if (manager.isOnCooldown(
+                player,
+                "UNBREAKABLE_EGO")) {
+
+            sendCooldown(
+                    player,
+                    "UNBREAKABLE_EGO"
+            );
+
+            return;
+        }
+
+        manager.setCooldown(
+                player,
+                "UNBREAKABLE_EGO",
+                UE_COOLDOWN
+        );
+
+        player.addPotionEffect(
+                new PotionEffect(
+                        PotionEffectType.RESISTANCE,
+                        (int) (20 * UE_DURATION),
+                        3,
+                        false,
+                        true,
+                        true
+                )
+        );
+
+        player.addPotionEffect(
+                new PotionEffect(
+                        PotionEffectType.ABSORPTION,
+                        (int) (20 * UE_DURATION),
+                        1,
+                        false,
+                        true,
+                        true
+                )
+        );
+
+        player.sendMessage(
+                ChatColor.AQUA +
+                "🛡 UNBREAKABLE EGO!"
+        );
+
+        player.sendMessage(
+                ChatColor.GRAY +
+                "Your defenses have become extremely powerful."
+        );
+    }
+
+    // ============================================================
+    // PUNISHMENT OF THE PROUD
+    // ============================================================
+
+    private void activatePunishmentProud(
+            Player player) {
+
+        if (manager.isOnCooldown(
+                player,
+                "PUNISHMENT_PROUD")) {
+
+            sendCooldown(
+                    player,
+                    "PUNISHMENT_PROUD"
+            );
+
+            return;
+        }
+
+        manager.setCooldown(
+                player,
+                "PUNISHMENT_PROUD",
+                PP_COOLDOWN
+        );
+
+        Location location =
+                player.getLocation();
+
+        Vector direction =
+                player.getLocation()
+                        .getDirection()
+                        .normalize();
+
+        int hit = 0;
+
+        for (LivingEntity entity :
+                player.getWorld()
+                        .getLivingEntities()) {
+
+            if (entity.equals(player)) {
+                continue;
+            }
+
+            if (entity instanceof Player) {
+                continue;
+            }
+
+            Location target =
+                    entity.getLocation();
+
+            Vector toTarget =
+                    target.toVector()
+                            .subtract(
+                                    location.toVector()
+                            );
+
+            double distance =
+                    toTarget.length();
+
+            if (distance > 8.0) {
+                continue;
+            }
+
+            if (distance <= 0) {
+                continue;
+            }
+
+            double dot =
+                    direction.dot(
+                            toTarget.normalize()
+                    );
+
+            if (dot < 0.65) {
+                continue;
+            }
+
+            entity.damage(
+                    PP_DAMAGE,
+                    player
+            );
+
+            entity.setFireTicks(60);
+
+            hit++;
+        }
+
+        player.sendMessage(
+                ChatColor.RED +
+                "⚔ PUNISHMENT OF THE PROUD!"
+        );
+
+        player.sendMessage(
+                ChatColor.GRAY +
+                hit +
+                " enemy/enemies punished."
+        );
+    }
+
+    // ============================================================
+    // PRIDE'S JUDGMENT
+    // ============================================================
+
+    private void activatePridesJudgment(
+            Player player) {
+
+        if (manager.isOnCooldown(
+                player,
+                "PRIDES_JUDGMENT")) {
+
+            sendCooldown(
+                    player,
+                    "PRIDES_JUDGMENT"
+            );
+
+            return;
+        }
+
+        manager.setCooldown(
+                player,
+                "PRIDES_JUDGMENT",
+                PJ_COOLDOWN
+        );
+
+        Location start =
+                player.getEyeLocation();
+
+        Vector direction =
+                start.getDirection()
+                        .normalize();
+
+        int hit = 0;
+
+        // Judgment beam
+        for (double distance = 1.0;
+             distance <= 12.0;
+             distance += 0.5) {
+
+            Location point =
+                    start.clone()
+                            .add(
+                                    direction.clone()
+                                            .multiply(distance)
+                            );
+
+            for (LivingEntity entity :
+                    player.getWorld()
+                            .getLivingEntities()) {
+
+                if (entity.equals(player)) {
+                    continue;
+                }
+
+                if (entity instanceof Player) {
+                    continue;
+                }
+
+                if (entity.getLocation()
+                        .distance(point)
+                        > 1.3) {
+                    continue;
+                }
+
+                entity.damage(
+                        PJ_DAMAGE,
+                        player
+                );
+
+                entity.setFireTicks(100);
+
+                hit++;
+            }
+        }
+
+        player.sendMessage(
+                ChatColor.LIGHT_PURPLE +
+                "⚖ PRIDE'S JUDGMENT!"
+        );
+
+        player.sendMessage(
+                ChatColor.GRAY +
+                hit +
+                " enemy/enemies judged."
+        );
+    }
+
+    // ============================================================
+    // KING'S AUTHORITY ULTIMATE
+    // ============================================================
+
+    private void activateKingsAuthority(
+            Player player) {
+
+        if (manager.isOnCooldown(
+                player,
+                "KINGS_AUTHORITY")) {
+
+            sendCooldown(
+                    player,
+                    "KINGS_AUTHORITY"
+            );
+
+            return;
+        }
+
+        manager.setCooldown(
+                player,
+                "KINGS_AUTHORITY",
+                KAU_COOLDOWN
+        );
+
+        int affected = 0;
+
+        for (LivingEntity entity :
+                player.getWorld()
+                        .getLivingEntities()) {
+
+            if (entity.equals(player)) {
+                continue;
+            }
+
+            if (entity.getLocation()
+                    .distance(player.getLocation())
+                    > KAU_RADIUS) {
+                continue;
+            }
+
+            if (entity instanceof Player) {
+                continue;
+            }
+
+            entity.damage(
+                    KAU_DAMAGE,
+                    player
+            );
+
+            entity.setFireTicks(20 * 5);
+
+            entity.addPotionEffect(
+                    new PotionEffect(
+                            PotionEffectType.WEAKNESS,
+                            20 * 8,
+                            2,
+                            false,
+                            true,
+                            true
+                    )
+            );
+
+            entity.addPotionEffect(
+                    new PotionEffect(
+                            PotionEffectType.SLOWNESS,
+                            20 * 6,
+                            2,
+                            false,
+                            true,
+                            true
+                    )
+            );
+
+            affected++;
+        }
+
+        // Ultimate self-buff
+        player.addPotionEffect(
+                new PotionEffect(
+                        PotionEffectType.STRENGTH,
+                        20 * 15,
+                        2,
+                        false,
+                        true,
+                        true
+                )
+        );
+
+        player.addPotionEffect(
+                new PotionEffect(
+                        PotionEffectType.RESISTANCE,
+                        20 * 15,
+                        1,
+                        false,
+                        true,
+                        true
+                )
+        );
+
+        player.sendMessage(
+                ChatColor.GOLD +
+                "☀ KING'S AUTHORITY ULTIMATE!"
+        );
+
+        player.sendMessage(
+                ChatColor.YELLOW +
+                affected +
+                " enemies overwhelmed."
+        );
+    }
+
+    // ============================================================
+    // COOLDOWN
     // ============================================================
 
     private void sendCooldown(
@@ -494,15 +998,19 @@ public class RhittaListener implements Listener {
 
         player.sendMessage(
                 ChatColor.RED +
-                formatAbility(ability) +
-                " is on cooldown: " +
-                String.format(
+                formatAbility(ability)
+                + " is on cooldown: "
+                + String.format(
                         "%.1f",
                         seconds
-                ) +
-                "s"
+                )
+                + "s"
         );
     }
+
+    // ============================================================
+    // FORMAT ABILITY
+    // ============================================================
 
     private String formatAbility(
             String ability) {
@@ -511,13 +1019,28 @@ public class RhittaListener implements Listener {
             return "None";
         }
 
-        switch (ability.toUpperCase()) {
+        switch (ability.toLowerCase()) {
 
-            case "KING_AURA":
-                return "King Aura";
-
-            case "FIREBALL":
+            case "fireball":
                 return "Fireball";
+
+            case "absolute_dominance":
+                return "Absolute Dominance";
+
+            case "king_aura":
+                return "King's Aura";
+
+            case "unbreakable_ego":
+                return "Unbreakable Ego";
+
+            case "punishment_proud":
+                return "Punishment of the Proud";
+
+            case "prides_judgment":
+                return "Pride's Judgment";
+
+            case "kings_authority":
+                return "King's Authority Ultimate";
 
             default:
                 return ability;
@@ -653,6 +1176,10 @@ public class RhittaListener implements Listener {
         Player player =
                 (Player) event.getEntity();
 
+        if (!manager.isOwner(player)) {
+            return;
+        }
+
         if (!manager.hasRhitta(player)) {
             return;
         }
@@ -664,12 +1191,8 @@ public class RhittaListener implements Listener {
             return;
         }
 
-        /*
-         * 1 defense = 1% damage reduction.
-         *
-         * Maximum = 80%.
-         */
-
+        // 1 defense = 1% reduction
+        // Maximum = 80%
         double reduction =
                 Math.min(
                         defense * 0.01,
