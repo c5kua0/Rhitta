@@ -2,6 +2,9 @@ package me.reno.rhitta;
 
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
+import org.bukkit.Particle;
+import org.bukkit.Sound;
+import org.bukkit.World;
 import org.bukkit.entity.Fireball;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
@@ -27,8 +30,8 @@ import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.util.Vector;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 public class RhittaListener implements Listener {
 
@@ -36,12 +39,16 @@ public class RhittaListener implements Listener {
     private final RhittaManager manager;
 
     // ============================================================
-    // BALANCED MULTIPLAYER VALUES
+    // COMBAT
     // ============================================================
 
     private static final double PHYSICAL_ATTACK = 20.0;
     private static final double LIFE_STEAL = 4.0;
     private static final int DEFENSE_PER_HIT = 1;
+
+    // ============================================================
+    // COOLDOWNS
+    // ============================================================
 
     private static final long FIREBALL_COOLDOWN = 3000L;
     private static final long AD_COOLDOWN = 20000L;
@@ -51,23 +58,51 @@ public class RhittaListener implements Listener {
     private static final long PJ_COOLDOWN = 10000L;
     private static final long KAU_COOLDOWN = 60000L;
 
+    // ============================================================
+    // DAMAGE
+    // ============================================================
+
     private static final double FIREBALL_DAMAGE = 10.0;
-
-    private static final double AD_RADIUS = 8.0;
     private static final double AD_DAMAGE = 5.0;
-
-    private static final double KA_RADIUS = 8.0;
     private static final double KA_DAMAGE = 4.0;
-
-    private static final double UE_DURATION = 10.0;
-
     private static final double PP_DAMAGE = 14.0;
     private static final double PJ_DAMAGE = 12.0;
-
-    private static final double KAU_RADIUS = 12.0;
     private static final double KAU_DAMAGE = 20.0;
 
-    private final List<String> abilities = new ArrayList<>();
+    // ============================================================
+    // RADIUS / RANGE
+    // ============================================================
+
+    private static final double AD_RADIUS = 8.0;
+    private static final double KA_RADIUS = 8.0;
+    private static final double KAU_RADIUS = 12.0;
+    private static final double PJ_RANGE = 12.0;
+    private static final double PP_RANGE = 8.0;
+
+    // ============================================================
+    // EFFECT DURATIONS
+    // ============================================================
+
+    private static final int UE_DURATION = 10;
+    private static final int KA_DURATION = 10;
+    private static final int KAU_DURATION = 15;
+
+    // ============================================================
+    // HOTBAR SKILLS
+    // ============================================================
+
+    /*
+     * Minecraft hotbar:
+     *
+     * Slot 0 = Slot 1
+     * Slot 1 = Slot 2
+     * Slot 2 = Slot 3
+     * ...
+     * Slot 6 = Slot 7
+     */
+
+    private final Map<Integer, String> hotbarSkills =
+            new HashMap<>();
 
     public RhittaListener(
             RhittaPlugin plugin,
@@ -76,13 +111,18 @@ public class RhittaListener implements Listener {
         this.plugin = plugin;
         this.manager = manager;
 
-        abilities.add("fireball");
-        abilities.add("absolute_dominance");
-        abilities.add("king_aura");
-        abilities.add("unbreakable_ego");
-        abilities.add("punishment_proud");
-        abilities.add("prides_judgment");
-        abilities.add("kings_authority");
+        setupHotbarSkills();
+    }
+
+    private void setupHotbarSkills() {
+
+        hotbarSkills.put(0, "fireball");
+        hotbarSkills.put(1, "king_aura");
+        hotbarSkills.put(2, "unbreakable_ego");
+        hotbarSkills.put(3, "punishment_proud");
+        hotbarSkills.put(4, "prides_judgment");
+        hotbarSkills.put(5, "absolute_dominance");
+        hotbarSkills.put(6, "kings_authority");
     }
 
     // ============================================================
@@ -120,7 +160,7 @@ public class RhittaListener implements Listener {
     }
 
     // ============================================================
-    // NORMAL RHITTA ATTACK
+    // RHITTA SWORD COMBAT
     // ============================================================
 
     @EventHandler(priority = EventPriority.HIGH)
@@ -146,13 +186,19 @@ public class RhittaListener implements Listener {
             return;
         }
 
-        // +20 physical attack
+        /*
+         * Rhitta remains a sword with:
+         *
+         * +20 damage
+         * +4 HP life steal
+         * +1 defense per successful hit
+         */
+
         event.setDamage(
                 event.getDamage()
                         + PHYSICAL_ATTACK
         );
 
-        // Life steal
         double newHealth =
                 Math.min(
                         player.getHealth()
@@ -162,19 +208,29 @@ public class RhittaListener implements Listener {
 
         player.setHealth(newHealth);
 
-        // Defense grows on every hit
         manager.addDefense(
                 player,
                 DEFENSE_PER_HIT
         );
+
+        player.getWorld().spawnParticle(
+                Particle.CRIT,
+                player.getLocation()
+                        .add(0, 1, 0),
+                8,
+                0.3,
+                0.4,
+                0.3,
+                0.1
+        );
     }
 
     // ============================================================
-    // RIGHT CLICK / SHIFT RIGHT CLICK
+    // SHIFT + RIGHT CLICK
     // ============================================================
 
     @EventHandler
-    public void onInteract(
+    public void onSkillUse(
             PlayerInteractEvent event) {
 
         if (event.getHand()
@@ -197,83 +253,45 @@ public class RhittaListener implements Listener {
             return;
         }
 
-        ItemStack item =
-                player.getInventory()
-                        .getItemInMainHand();
+        /*
+         * Skills are optional.
+         *
+         * /rhitta skills on
+         * /rhitta skills off
+         */
 
-        if (!manager.isRhitta(item)) {
+        if (!manager.isBuffsEnabled()) {
+            return;
+        }
+
+        /*
+         * ONLY SHIFT + RIGHT CLICK
+         */
+
+        if (!player.isSneaking()) {
             return;
         }
 
         event.setCancelled(true);
 
-        /*
-         * NORMAL RIGHT CLICK
-         * = ACTIVATE
-         */
-        if (!player.isSneaking()) {
+        int slot =
+                player.getInventory()
+                        .getHeldItemSlot();
 
-            String ability =
-                    manager.getActiveAbility(player);
+        String ability =
+                hotbarSkills.get(slot);
 
-            if (ability == null) {
-
-                manager.setAbilityActive(
-                        player,
-                        abilities.get(0)
-                );
-
-                ability =
-                        abilities.get(0);
-            }
-
-            activateAbility(
-                    player,
-                    ability
+        if (ability == null) {
+            player.sendMessage(
+                    ChatColor.RED +
+                    "No Rhitta skill assigned to this slot."
             );
-
             return;
         }
 
-        /*
-         * SHIFT + RIGHT CLICK
-         * = SELECT / CYCLE
-         */
-
-        cycleAbility(player);
-    }
-
-    // ============================================================
-    // SELECT ABILITY
-    // ============================================================
-
-    private void cycleAbility(Player player) {
-
-        String current =
-                manager.getActiveAbility(player);
-
-        int index =
-                abilities.indexOf(current);
-
-        index++;
-
-        if (index >= abilities.size()) {
-            index = 0;
-        }
-
-        String next =
-                abilities.get(index);
-
-        manager.setAbilityActive(
+        activateAbility(
                 player,
-                next
-        );
-
-        player.sendMessage(
-                ChatColor.GOLD +
-                "⚔ Rhitta Selected: "
-                + ChatColor.YELLOW
-                + formatAbility(next)
+                ability
         );
     }
 
@@ -285,18 +303,10 @@ public class RhittaListener implements Listener {
             Player player,
             String ability) {
 
-        if (ability == null) {
-            return;
-        }
-
-        switch (ability.toLowerCase()) {
+        switch (ability) {
 
             case "fireball":
                 activateFireball(player);
-                break;
-
-            case "absolute_dominance":
-                activateAbsoluteDominance(player);
                 break;
 
             case "king_aura":
@@ -315,6 +325,10 @@ public class RhittaListener implements Listener {
                 activatePridesJudgment(player);
                 break;
 
+            case "absolute_dominance":
+                activateAbsoluteDominance(player);
+                break;
+
             case "kings_authority":
                 activateKingsAuthority(player);
                 break;
@@ -322,7 +336,7 @@ public class RhittaListener implements Listener {
             default:
                 player.sendMessage(
                         ChatColor.RED +
-                        "Unknown Rhitta ability."
+                        "Unknown Rhitta skill."
                 );
         }
     }
@@ -337,11 +351,7 @@ public class RhittaListener implements Listener {
                 player,
                 "FIREBALL")) {
 
-            sendCooldown(
-                    player,
-                    "FIREBALL"
-            );
-
+            sendCooldown(player, "FIREBALL");
             return;
         }
 
@@ -377,15 +387,24 @@ public class RhittaListener implements Listener {
         fireball.setYield(0F);
         fireball.setIsIncendiary(false);
 
-        player.sendMessage(
-                ChatColor.GOLD +
-                "🔥 FIREBALL!"
+        spawnParticles(
+                player,
+                Particle.FLAME,
+                20
+        );
+
+        player.getWorld().playSound(
+                player.getLocation(),
+                Sound.ENTITY_BLAZE_SHOOT,
+                1.0f,
+                1.0f
+        );
+
+        sendActivated(
+                player,
+                "🔥 FIREBALL"
         );
     }
-
-    // ============================================================
-    // FIREBALL HIT
-    // ============================================================
 
     @EventHandler
     public void onFireballHit(
@@ -424,93 +443,16 @@ public class RhittaListener implements Listener {
                 FIREBALL_DAMAGE,
                 shooter
         );
-    }
 
-    // ============================================================
-    // ABSOLUTE DOMINANCE
-    // ============================================================
-
-    private void activateAbsoluteDominance(
-            Player player) {
-
-        if (manager.isOnCooldown(
-                player,
-                "ABSOLUTE_DOMINANCE")) {
-
-            sendCooldown(
-                    player,
-                    "ABSOLUTE_DOMINANCE"
-            );
-
-            return;
-        }
-
-        manager.setCooldown(
-                player,
-                "ABSOLUTE_DOMINANCE",
-                AD_COOLDOWN
-        );
-
-        int affected = 0;
-
-        for (LivingEntity entity :
-                player.getWorld()
-                        .getLivingEntities()) {
-
-            if (entity.equals(player)) {
-                continue;
-            }
-
-            if (entity.getLocation()
-                    .distance(player.getLocation())
-                    > AD_RADIUS) {
-                continue;
-            }
-
-            if (entity instanceof Player
-                    && entity != player) {
-                continue;
-            }
-
-            entity.damage(
-                    AD_DAMAGE,
-                    player
-            );
-
-            entity.addPotionEffect(
-                    new PotionEffect(
-                            PotionEffectType.WEAKNESS,
-                            20 * 6,
-                            1,
-                            false,
-                            true,
-                            true
-                    )
-            );
-
-            entity.addPotionEffect(
-                    new PotionEffect(
-                            PotionEffectType.SLOWNESS,
-                            20 * 4,
-                            1,
-                            false,
-                            true,
-                            true
-                    )
-            );
-
-            affected++;
-        }
-
-        player.sendMessage(
-                ChatColor.DARK_RED +
-                "👑 ABSOLUTE DOMINANCE!"
-        );
-
-        player.sendMessage(
-                ChatColor.GRAY.toString() +
-                affected +
-                " enemy/enemies overwhelmed."
+        target.getWorld().spawnParticle(
+                Particle.FLAME,
+                target.getLocation()
+                        .add(0, 1, 0),
+                30,
+                0.4,
+                0.5,
+                0.4,
+                0.05
         );
     }
 
@@ -525,11 +467,7 @@ public class RhittaListener implements Listener {
                 player,
                 "KING_AURA")) {
 
-            sendCooldown(
-                    player,
-                    "KING_AURA"
-            );
-
+            sendCooldown(player, "KING_AURA");
             return;
         }
 
@@ -542,7 +480,7 @@ public class RhittaListener implements Listener {
         player.addPotionEffect(
                 new PotionEffect(
                         PotionEffectType.STRENGTH,
-                        20 * 10,
+                        20 * KA_DURATION,
                         1,
                         false,
                         true,
@@ -553,7 +491,7 @@ public class RhittaListener implements Listener {
         player.addPotionEffect(
                 new PotionEffect(
                         PotionEffectType.RESISTANCE,
-                        20 * 10,
+                        20 * KA_DURATION,
                         1,
                         false,
                         true,
@@ -561,25 +499,18 @@ public class RhittaListener implements Listener {
                 )
         );
 
+        spawnRing(
+                player,
+                Particle.ENCHANT,
+                KA_RADIUS
+        );
+
         int affected = 0;
 
         for (LivingEntity entity :
-                player.getWorld()
-                        .getLivingEntities()) {
-
-            if (entity.equals(player)) {
-                continue;
-            }
-
-            if (entity.getLocation()
-                    .distance(player.getLocation())
-                    > KA_RADIUS) {
-                continue;
-            }
-
-            if (entity instanceof Player) {
-                continue;
-            }
+                getNearbyEnemies(
+                        player,
+                        KA_RADIUS)) {
 
             entity.damage(
                     KA_DAMAGE,
@@ -608,12 +539,17 @@ public class RhittaListener implements Listener {
                     )
             );
 
+            spawnHitParticles(
+                    entity,
+                    Particle.ENCHANT
+            );
+
             affected++;
         }
 
-        player.sendMessage(
-                ChatColor.GOLD +
-                "👑 KING'S AURA!"
+        sendActivated(
+                player,
+                "👑 KING'S AURA"
         );
 
         player.sendMessage(
@@ -622,7 +558,7 @@ public class RhittaListener implements Listener {
         );
 
         player.sendMessage(
-                ChatColor.GRAY.toString() +
+                ChatColor.GRAY +
                 affected +
                 " enemies affected."
         );
@@ -643,20 +579,19 @@ public class RhittaListener implements Listener {
                     player,
                     "UNBREAKABLE_EGO"
             );
-
             return;
         }
 
         manager.setCooldown(
                 player,
                 "UNBREAKABLE_EGO",
-                UE_COOLDOWN
+                UE_DURATION * 3000L
         );
 
         player.addPotionEffect(
                 new PotionEffect(
                         PotionEffectType.RESISTANCE,
-                        (int) (20 * UE_DURATION),
+                        20 * UE_DURATION,
                         3,
                         false,
                         true,
@@ -667,7 +602,7 @@ public class RhittaListener implements Listener {
         player.addPotionEffect(
                 new PotionEffect(
                         PotionEffectType.ABSORPTION,
-                        (int) (20 * UE_DURATION),
+                        20 * UE_DURATION,
                         1,
                         false,
                         true,
@@ -675,14 +610,28 @@ public class RhittaListener implements Listener {
                 )
         );
 
-        player.sendMessage(
-                ChatColor.AQUA +
-                "🛡 UNBREAKABLE EGO!"
+        spawnRing(
+                player,
+                Particle.TOTEM_OF_UNDYING,
+                4.0
         );
 
-        player.sendMessage(
-                ChatColor.GRAY +
-                "Your defenses have become extremely powerful."
+        spawnParticles(
+                player,
+                Particle.ENCHANT,
+                35
+        );
+
+        player.getWorld().playSound(
+                player.getLocation(),
+                Sound.ITEM_TOTEM_USE,
+                1.0f,
+                0.8f
+        );
+
+        sendActivated(
+                player,
+                "🛡 UNBREAKABLE EGO"
         );
     }
 
@@ -701,7 +650,6 @@ public class RhittaListener implements Listener {
                     player,
                     "PUNISHMENT_PROUD"
             );
-
             return;
         }
 
@@ -711,43 +659,88 @@ public class RhittaListener implements Listener {
                 PP_COOLDOWN
         );
 
-        Location location =
-                player.getLocation();
+        /*
+         * PROPER DASH
+         *
+         * The old version only checked enemies in front.
+         * This version actually launches the player forward.
+         */
 
         Vector direction =
                 player.getLocation()
                         .getDirection()
                         .normalize();
 
+        Vector dash =
+                direction.clone()
+                        .multiply(1.8);
+
+        dash.setY(
+                Math.max(
+                        0.35,
+                        direction.getY() * 0.5
+                )
+        );
+
+        player.setVelocity(dash);
+
+        // Dash particles
+        spawnDashTrail(
+                player,
+                direction
+        );
+
+        player.getWorld().playSound(
+                player.getLocation(),
+                Sound.ENTITY_PLAYER_ATTACK_SWEEP,
+                1.0f,
+                0.6f
+        );
+
+        /*
+         * Damage enemies along the dash direction.
+         */
+
+        plugin.getServer()
+                .getScheduler()
+                .runTaskLater(
+                        plugin,
+                        () -> damageDashTargets(player),
+                        2L
+                );
+
+        sendActivated(
+                player,
+                "⚔ PUNISHMENT OF THE PROUD"
+        );
+    }
+
+    private void damageDashTargets(
+            Player player) {
+
+        Location location =
+                player.getLocation();
+
+        Vector direction =
+                location.getDirection()
+                        .normalize();
+
         int hit = 0;
 
         for (LivingEntity entity :
-                player.getWorld()
-                        .getLivingEntities()) {
-
-            if (entity.equals(player)) {
-                continue;
-            }
-
-            if (entity instanceof Player) {
-                continue;
-            }
-
-            Location target =
-                    entity.getLocation();
+                getNearbyEnemies(
+                        player,
+                        PP_RANGE)) {
 
             Vector toTarget =
-                    target.toVector()
+                    entity.getLocation()
+                            .toVector()
                             .subtract(
                                     location.toVector()
                             );
 
             double distance =
                     toTarget.length();
-
-            if (distance > 8.0) {
-                continue;
-            }
 
             if (distance <= 0) {
                 continue;
@@ -758,7 +751,7 @@ public class RhittaListener implements Listener {
                             toTarget.normalize()
                     );
 
-            if (dot < 0.65) {
+            if (dot < 0.45) {
                 continue;
             }
 
@@ -769,18 +762,18 @@ public class RhittaListener implements Listener {
 
             entity.setFireTicks(60);
 
+            spawnHitParticles(
+                    entity,
+                    Particle.FLAME
+            );
+
             hit++;
         }
 
         player.sendMessage(
-                ChatColor.RED +
-                "⚔ PUNISHMENT OF THE PROUD!"
-        );
-
-        player.sendMessage(
-                ChatColor.GRAY.toString() +
+                ChatColor.GRAY +
                 hit +
-                " enemy/enemies punished."
+                " enemy/enemies hit by the dash."
         );
     }
 
@@ -799,7 +792,6 @@ public class RhittaListener implements Listener {
                     player,
                     "PRIDES_JUDGMENT"
             );
-
             return;
         }
 
@@ -818,9 +810,13 @@ public class RhittaListener implements Listener {
 
         int hit = 0;
 
+        /*
+         * Beam particles.
+         */
+
         for (double distance = 1.0;
-             distance <= 12.0;
-             distance += 0.5) {
+             distance <= PJ_RANGE;
+             distance += 0.35) {
 
             Location point =
                     start.clone()
@@ -829,17 +825,30 @@ public class RhittaListener implements Listener {
                                             .multiply(distance)
                             );
 
+            player.getWorld().spawnParticle(
+                    Particle.END_ROD,
+                    point,
+                    4,
+                    0.05,
+                    0.05,
+                    0.05,
+                    0.01
+            );
+
+            player.getWorld().spawnParticle(
+                    Particle.ENCHANT,
+                    point,
+                    3,
+                    0.1,
+                    0.1,
+                    0.1,
+                    0.02
+            );
+
             for (LivingEntity entity :
-                    player.getWorld()
-                            .getLivingEntities()) {
-
-                if (entity.equals(player)) {
-                    continue;
-                }
-
-                if (entity instanceof Player) {
-                    continue;
-                }
+                    getNearbyEnemies(
+                            player,
+                            PJ_RANGE)) {
 
                 if (entity.getLocation()
                         .distance(point)
@@ -854,24 +863,133 @@ public class RhittaListener implements Listener {
 
                 entity.setFireTicks(100);
 
+                spawnHitParticles(
+                        entity,
+                        Particle.END_ROD
+                );
+
                 hit++;
             }
         }
 
-        player.sendMessage(
-                ChatColor.LIGHT_PURPLE +
-                "⚖ PRIDE'S JUDGMENT!"
+        player.getWorld().playSound(
+                player.getLocation(),
+                Sound.ENTITY_EVOKER_CAST_SPELL,
+                1.0f,
+                0.7f
+        );
+
+        sendActivated(
+                player,
+                "⚖ PRIDE'S JUDGMENT"
         );
 
         player.sendMessage(
-                ChatColor.GRAY.toString() +
+                ChatColor.GRAY +
                 hit +
                 " enemy/enemies judged."
         );
     }
 
     // ============================================================
-    // KING'S AUTHORITY ULTIMATE
+    // ABSOLUTE DOMINANCE
+    // ============================================================
+
+    private void activateAbsoluteDominance(
+            Player player) {
+
+        if (manager.isOnCooldown(
+                player,
+                "ABSOLUTE_DOMINANCE")) {
+
+            sendCooldown(
+                    player,
+                    "ABSOLUTE_DOMINANCE"
+            );
+            return;
+        }
+
+        manager.setCooldown(
+                player,
+                "ABSOLUTE_DOMINANCE",
+                AD_COOLDOWN
+        );
+
+        spawnRing(
+                player,
+                Particle.SMOKE,
+                AD_RADIUS
+        );
+
+        spawnParticles(
+                player,
+                Particle.ANGRY_VILLAGER,
+                20
+        );
+
+        int affected = 0;
+
+        for (LivingEntity entity :
+                getNearbyEnemies(
+                        player,
+                        AD_RADIUS)) {
+
+            entity.damage(
+                    AD_DAMAGE,
+                    player
+            );
+
+            entity.addPotionEffect(
+                    new PotionEffect(
+                            PotionEffectType.WEAKNESS,
+                            20 * 6,
+                            1,
+                            false,
+                            true,
+                            true
+                    )
+            );
+
+            entity.addPotionEffect(
+                    new PotionEffect(
+                            PotionEffectType.SLOWNESS,
+                            20 * 4,
+                            1,
+                            false,
+                            true,
+                            true
+                    )
+            );
+
+            spawnHitParticles(
+                    entity,
+                    Particle.SMOKE
+            );
+
+            affected++;
+        }
+
+        player.getWorld().playSound(
+                player.getLocation(),
+                Sound.ENTITY_WITHER_AMBIENT,
+                0.8f,
+                1.2f
+        );
+
+        sendActivated(
+                player,
+                "👑 ABSOLUTE DOMINANCE"
+        );
+
+        player.sendMessage(
+                ChatColor.GRAY +
+                affected +
+                " enemy/enemies overwhelmed."
+        );
+    }
+
+    // ============================================================
+    // KING'S AUTHORITY
     // ============================================================
 
     private void activateKingsAuthority(
@@ -885,7 +1003,6 @@ public class RhittaListener implements Listener {
                     player,
                     "KINGS_AUTHORITY"
             );
-
             return;
         }
 
@@ -895,25 +1012,34 @@ public class RhittaListener implements Listener {
                 KAU_COOLDOWN
         );
 
+        /*
+         * Large ultimate aura.
+         */
+
+        spawnRing(
+                player,
+                Particle.FLAME,
+                KAU_RADIUS
+        );
+
+        spawnRing(
+                player,
+                Particle.END_ROD,
+                KAU_RADIUS * 0.7
+        );
+
+        spawnParticles(
+                player,
+                Particle.TOTEM_OF_UNDYING,
+                50
+        );
+
         int affected = 0;
 
         for (LivingEntity entity :
-                player.getWorld()
-                        .getLivingEntities()) {
-
-            if (entity.equals(player)) {
-                continue;
-            }
-
-            if (entity.getLocation()
-                    .distance(player.getLocation())
-                    > KAU_RADIUS) {
-                continue;
-            }
-
-            if (entity instanceof Player) {
-                continue;
-            }
+                getNearbyEnemies(
+                        player,
+                        KAU_RADIUS)) {
 
             entity.damage(
                     KAU_DAMAGE,
@@ -944,13 +1070,18 @@ public class RhittaListener implements Listener {
                     )
             );
 
+            spawnHitParticles(
+                    entity,
+                    Particle.FLAME
+            );
+
             affected++;
         }
 
         player.addPotionEffect(
                 new PotionEffect(
                         PotionEffectType.STRENGTH,
-                        20 * 15,
+                        20 * KAU_DURATION,
                         2,
                         false,
                         true,
@@ -961,7 +1092,7 @@ public class RhittaListener implements Listener {
         player.addPotionEffect(
                 new PotionEffect(
                         PotionEffectType.RESISTANCE,
-                        20 * 15,
+                        20 * KAU_DURATION,
                         1,
                         false,
                         true,
@@ -969,21 +1100,188 @@ public class RhittaListener implements Listener {
                 )
         );
 
-        player.sendMessage(
-                ChatColor.GOLD +
-                "☀ KING'S AUTHORITY ULTIMATE!"
+        player.getWorld().playSound(
+                player.getLocation(),
+                Sound.ENTITY_WITHER_SPAWN,
+                1.0f,
+                0.8f
+        );
+
+        sendActivated(
+                player,
+                "☀ KING'S AUTHORITY ULTIMATE"
         );
 
         player.sendMessage(
-                ChatColor.YELLOW.toString() +
+                ChatColor.YELLOW +
                 affected +
                 " enemies overwhelmed."
         );
     }
 
     // ============================================================
-    // COOLDOWN
+    // NEARBY ENEMIES
     // ============================================================
+
+    private Iterable<LivingEntity> getNearbyEnemies(
+            Player player,
+            double radius) {
+
+        /*
+         * Uses the world's living entities.
+         * Players are excluded so the skills don't damage
+         * other players.
+         */
+
+        return player.getWorld()
+                .getLivingEntities()
+                .stream()
+                .filter(entity ->
+                        entity != player
+                        && !(entity instanceof Player)
+                        && entity.getLocation()
+                                .distance(
+                                        player.getLocation()
+                                ) <= radius
+                )
+                .toList();
+    }
+
+    // ============================================================
+    // PARTICLE HELPERS
+    // ============================================================
+
+    private void spawnParticles(
+            Player player,
+            Particle particle,
+            int amount) {
+
+        Location location =
+                player.getLocation()
+                        .add(0, 1, 0);
+
+        player.getWorld().spawnParticle(
+                particle,
+                location,
+                amount,
+                0.5,
+                0.8,
+                0.5,
+                0.05
+        );
+    }
+
+    private void spawnHitParticles(
+            LivingEntity entity,
+            Particle particle) {
+
+        Location location =
+                entity.getLocation()
+                        .add(0, 1, 0);
+
+        entity.getWorld().spawnParticle(
+                particle,
+                location,
+                15,
+                0.35,
+                0.5,
+                0.35,
+                0.05
+        );
+    }
+
+    private void spawnRing(
+            Player player,
+            Particle particle,
+            double radius) {
+
+        World world =
+                player.getWorld();
+
+        Location center =
+                player.getLocation()
+                        .add(0, 0.15, 0);
+
+        for (double angle = 0;
+             angle < Math.PI * 2;
+             angle += Math.PI / 20) {
+
+            double x =
+                    Math.cos(angle) * radius;
+
+            double z =
+                    Math.sin(angle) * radius;
+
+            Location point =
+                    center.clone()
+                            .add(x, 0, z);
+
+            world.spawnParticle(
+                    particle,
+                    point,
+                    2,
+                    0,
+                    0.05,
+                    0,
+                    0.01
+            );
+        }
+    }
+
+    private void spawnDashTrail(
+            Player player,
+            Vector direction) {
+
+        Location location =
+                player.getLocation()
+                        .add(0, 0.8, 0);
+
+        for (int i = 0; i < 12; i++) {
+
+            Location point =
+                    location.clone()
+                            .subtract(
+                                    direction.clone()
+                                            .multiply(i * 0.25)
+                            );
+
+            player.getWorld().spawnParticle(
+                    Particle.FLAME,
+                    point,
+                    4,
+                    0.15,
+                    0.15,
+                    0.15,
+                    0.02
+            );
+
+            player.getWorld().spawnParticle(
+                    Particle.CLOUD,
+                    point,
+                    2,
+                    0.1,
+                    0.1,
+                    0.1,
+                    0.02
+            );
+        }
+    }
+
+    // ============================================================
+    // MESSAGES
+    // ============================================================
+
+    private void sendActivated(
+            Player player,
+            String ability) {
+
+        player.sendMessage(
+                ChatColor.GOLD +
+                ability +
+                ChatColor.YELLOW +
+                " activated!"
+        );
+    }
 
     private void sendCooldown(
             Player player,
@@ -1010,24 +1308,13 @@ public class RhittaListener implements Listener {
         );
     }
 
-    // ============================================================
-    // FORMAT ABILITY
-    // ============================================================
-
     private String formatAbility(
             String ability) {
-
-        if (ability == null) {
-            return "None";
-        }
 
         switch (ability.toLowerCase()) {
 
             case "fireball":
                 return "Fireball";
-
-            case "absolute_dominance":
-                return "Absolute Dominance";
 
             case "king_aura":
                 return "King's Aura";
@@ -1041,8 +1328,11 @@ public class RhittaListener implements Listener {
             case "prides_judgment":
                 return "Pride's Judgment";
 
+            case "absolute_dominance":
+                return "Absolute Dominance";
+
             case "kings_authority":
-                return "King's Authority Ultimate";
+                return "King's Authority";
 
             default:
                 return ability;
@@ -1050,7 +1340,7 @@ public class RhittaListener implements Listener {
     }
 
     // ============================================================
-    // PICKUP PROTECTION
+    // RHITTA PICKUP PROTECTION
     // ============================================================
 
     @EventHandler
@@ -1076,7 +1366,6 @@ public class RhittaListener implements Listener {
         if (!manager.isOwner(player)) {
 
             event.setCancelled(true);
-
             return;
         }
 
@@ -1089,7 +1378,7 @@ public class RhittaListener implements Listener {
     }
 
     // ============================================================
-    // DROP PROTECTION
+    // RHITTA DROP PROTECTION
     // ============================================================
 
     @EventHandler
@@ -1106,7 +1395,7 @@ public class RhittaListener implements Listener {
     }
 
     // ============================================================
-    // INVENTORY PROTECTION
+    // RHITTA INVENTORY PROTECTION
     // ============================================================
 
     @EventHandler
@@ -1193,8 +1482,11 @@ public class RhittaListener implements Listener {
             return;
         }
 
-        // 1 defense = 1% reduction
-        // Maximum = 80%
+        /*
+         * 1 defense = 1% damage reduction.
+         * Maximum reduction = 80%.
+         */
+
         double reduction =
                 Math.min(
                         defense * 0.01,
