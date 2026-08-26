@@ -1,3 +1,5 @@
+RhittaManager.java
+
 package me.reno.rhitta;
 
 import org.bukkit.ChatColor;
@@ -30,10 +32,12 @@ public class RhittaManager {
     private final NamespacedKey rhittaIdKey;
 
     private long rhittaCounter = 0L;
+
     private boolean buffsEnabled;
     private boolean skillsEnabled = true;
 
     public RhittaManager(RhittaPlugin plugin) {
+
         this.plugin = plugin;
 
         rhittaKey = new NamespacedKey(plugin, "rhitta");
@@ -74,9 +78,9 @@ public class RhittaManager {
         }
 
         meta.setDisplayName(
-                ChatColor.GOLD.toString()
-                        + ChatColor.BOLD.toString()
-                        + "RHITTA"
+                ChatColor.GOLD + "" +
+                ChatColor.BOLD +
+                "RHITTA"
         );
 
         meta.setUnbreakable(true);
@@ -84,10 +88,10 @@ public class RhittaManager {
         rhittaCounter++;
 
         String id =
-                "RHITTA-"
-                        + rhittaCounter
-                        + "-"
-                        + UUID.randomUUID();
+                "RHITTA-" +
+                rhittaCounter +
+                "-" +
+                UUID.randomUUID();
 
         meta.getPersistentDataContainer().set(
                 rhittaKey,
@@ -118,11 +122,10 @@ public class RhittaManager {
             return false;
         }
 
-        Byte flag =
-                meta.getPersistentDataContainer().get(
-                        rhittaKey,
-                        PersistentDataType.BYTE
-                );
+        Byte flag = meta.getPersistentDataContainer().get(
+                rhittaKey,
+                PersistentDataType.BYTE
+        );
 
         return flag != null && flag == (byte) 1;
     }
@@ -284,7 +287,9 @@ public class RhittaManager {
             if (!kept) {
                 kept = true;
             } else {
+
                 removed += offhand.getAmount();
+
                 inventory.setItemInOffHand(null);
             }
         }
@@ -401,6 +406,7 @@ public class RhittaManager {
         return skillsEnabled;
     }
 
+    // Compatibility with RhittaCommand
     public boolean isSkillsEnabled() {
         return skillsEnabled;
     }
@@ -408,10 +414,6 @@ public class RhittaManager {
     public void setSkillsEnabled(boolean enabled) {
         skillsEnabled = enabled;
     }
-
-    // ============================================================
-    // HOTBAR ABILITIES
-    // ============================================================
 
     /*
      * Slot 1 = Fireball
@@ -488,7 +490,7 @@ public class RhittaManager {
     }
 
     // ============================================================
-    // ABILITY SELECTION
+    // ACTIVE ABILITY
     // ============================================================
 
     public void setAbilityActive(Player player, String ability) {
@@ -525,9 +527,9 @@ public class RhittaManager {
             Player player,
             String ability) {
 
-        return player.getUniqueId()
-                + ":"
-                + ability.toUpperCase();
+        return player.getUniqueId() +
+                ":" +
+                ability.toUpperCase();
     }
 
     public boolean isOnCooldown(
@@ -538,8 +540,8 @@ public class RhittaManager {
                 cooldownKey(player, ability)
         );
 
-        return end != null
-                && System.currentTimeMillis() < end;
+        return end != null &&
+                System.currentTimeMillis() < end;
     }
 
     public void setCooldown(
@@ -549,8 +551,7 @@ public class RhittaManager {
 
         cooldowns.put(
                 cooldownKey(player, ability),
-                System.currentTimeMillis()
-                        + milliseconds
+                System.currentTimeMillis() + milliseconds
         );
     }
 
