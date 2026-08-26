@@ -1,4 +1,3 @@
-
 package me.reno.rhitta;
 
 import org.bukkit.ChatColor;
