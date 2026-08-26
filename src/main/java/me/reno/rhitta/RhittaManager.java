@@ -1,4 +1,3 @@
-RhittaManager.java
 
 package me.reno.rhitta;
 
