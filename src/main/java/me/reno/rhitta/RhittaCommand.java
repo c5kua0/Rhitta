@@ -22,9 +22,12 @@ public class RhittaCommand implements CommandExecutor {
             String[] args) {
 
         if (!(sender instanceof Player)) {
+
             sender.sendMessage(
-                    ChatColor.RED + "Only players can use Rhitta commands."
+                    ChatColor.RED.toString()
+                            + "Only players can use Rhitta commands."
             );
+
             return true;
         }
 
@@ -47,20 +50,12 @@ public class RhittaCommand implements CommandExecutor {
 
         // =========================================================
         // SKILLS
-        // /rhitta skills on
-        // /rhitta skills off
-        // /rhitta skills status
         // =========================================================
 
         if (args[0].equalsIgnoreCase("skills")) {
 
             if (!manager.isOwner(player)) {
-                player.sendMessage(
-                        ChatColor.RED +
-                        "Only " +
-                        RhittaManager.OWNER_NAME +
-                        " can use Rhitta."
-                );
+                sendOwnerError(player);
                 return true;
             }
 
@@ -76,15 +71,15 @@ public class RhittaCommand implements CommandExecutor {
                     manager.setSkillsEnabled(true);
 
                     player.sendMessage(
-                            ChatColor.GOLD +
-                            "Rhitta Hotbar Skills: " +
-                            ChatColor.GREEN +
-                            "ENABLED"
+                            ChatColor.GOLD.toString()
+                                    + "Rhitta Hotbar Skills: "
+                                    + ChatColor.GREEN
+                                    + "ENABLED"
                     );
 
                     player.sendMessage(
-                            ChatColor.GRAY +
-                            "Shift + Click to activate the skill."
+                            ChatColor.GRAY.toString()
+                                    + "Right Click to activate the selected slot skill."
                     );
 
                     break;
@@ -94,10 +89,10 @@ public class RhittaCommand implements CommandExecutor {
                     manager.setSkillsEnabled(false);
 
                     player.sendMessage(
-                            ChatColor.GOLD +
-                            "Rhitta Hotbar Skills: " +
-                            ChatColor.RED +
-                            "DISABLED"
+                            ChatColor.GOLD.toString()
+                                    + "Rhitta Hotbar Skills: "
+                                    + ChatColor.RED
+                                    + "DISABLED"
                     );
 
                     break;
@@ -110,8 +105,8 @@ public class RhittaCommand implements CommandExecutor {
                 default:
 
                     player.sendMessage(
-                            ChatColor.YELLOW +
-                            "Usage: /rhitta skills <on|off|status>"
+                            ChatColor.YELLOW.toString()
+                                    + "Usage: /rhitta skills <on|off|status>"
                     );
 
                     break;
@@ -144,8 +139,6 @@ public class RhittaCommand implements CommandExecutor {
 
         // =========================================================
         // BUFFS
-        // /rhitta buffs true
-        // /rhitta buffs false
         // =========================================================
 
         if (args[0].equalsIgnoreCase("buffs")
@@ -159,8 +152,8 @@ public class RhittaCommand implements CommandExecutor {
             if (args.length < 2) {
 
                 player.sendMessage(
-                        ChatColor.YELLOW +
-                        "Usage: /rhitta buffs <true|false>"
+                        ChatColor.YELLOW.toString()
+                                + "Usage: /rhitta buffs <true|false>"
                 );
 
                 return true;
@@ -170,8 +163,8 @@ public class RhittaCommand implements CommandExecutor {
                     && !args[1].equalsIgnoreCase("false")) {
 
                 player.sendMessage(
-                        ChatColor.RED +
-                        "Use true or false."
+                        ChatColor.RED.toString()
+                                + "Use true or false."
                 );
 
                 return true;
@@ -183,9 +176,9 @@ public class RhittaCommand implements CommandExecutor {
             manager.setBuffsEnabled(enabled);
 
             player.sendMessage(
-                    ChatColor.GOLD +
-                    "Rhitta Survival Buffs: " +
-                    (enabled
+                    ChatColor.GOLD.toString()
+                            + "Rhitta Survival Buffs: "
+                            + (enabled
                             ? ChatColor.GREEN + "ENABLED"
                             : ChatColor.RED + "DISABLED")
             );
@@ -195,7 +188,6 @@ public class RhittaCommand implements CommandExecutor {
 
         // =========================================================
         // REMOVE DUPLICATES
-        // /rhitta remove dupes
         // =========================================================
 
         if (args.length >= 2
@@ -207,21 +199,20 @@ public class RhittaCommand implements CommandExecutor {
                 return true;
             }
 
-            int removed =
-                    manager.removeDuplicates();
+            int removed = manager.removeDuplicates();
 
             player.sendMessage(
-                    ChatColor.GOLD +
-                    "Rhitta duplicate cleanup complete."
+                    ChatColor.GOLD.toString()
+                            + "Rhitta duplicate cleanup complete."
             );
 
             player.sendMessage(
-                    ChatColor.YELLOW +
-                    "Removed: " +
-                    ChatColor.WHITE +
-                    removed +
-                    ChatColor.YELLOW +
-                    " duplicate item(s)."
+                    ChatColor.YELLOW.toString()
+                            + "Removed: "
+                            + ChatColor.WHITE
+                            + removed
+                            + ChatColor.YELLOW
+                            + " duplicate item(s)."
             );
 
             return true;
@@ -241,8 +232,8 @@ public class RhittaCommand implements CommandExecutor {
             manager.forceOneRhitta(player);
 
             player.sendMessage(
-                    ChatColor.GOLD +
-                    "Rhitta has been restored."
+                    ChatColor.GOLD.toString()
+                            + "Rhitta has been restored."
             );
 
             return true;
@@ -259,16 +250,15 @@ public class RhittaCommand implements CommandExecutor {
                 return true;
             }
 
-            int removed =
-                    manager.removeDuplicates();
+            int removed = manager.removeDuplicates();
 
             player.sendMessage(
-                    ChatColor.GOLD +
-                    "Cleanup complete. Removed " +
-                    ChatColor.YELLOW +
-                    removed +
-                    ChatColor.GOLD +
-                    " duplicate item(s)."
+                    ChatColor.GOLD.toString()
+                            + "Cleanup complete. Removed "
+                            + ChatColor.YELLOW
+                            + removed
+                            + ChatColor.GOLD
+                            + " duplicate item(s)."
             );
 
             return true;
@@ -276,14 +266,6 @@ public class RhittaCommand implements CommandExecutor {
 
         // =========================================================
         // DIRECT ABILITY SELECTION
-        //
-        // /rhitta 0
-        // /rhitta AD
-        // /rhitta KA
-        // /rhitta UE
-        // /rhitta PP
-        // /rhitta PJ
-        // /rhitta KAU
         // =========================================================
 
         if (isAbility(args[0])) {
@@ -293,8 +275,7 @@ public class RhittaCommand implements CommandExecutor {
                 return true;
             }
 
-            String ability =
-                    normalizeAbility(args[0]);
+            String ability = normalizeAbility(args[0]);
 
             manager.setAbilityActive(
                     player,
@@ -302,32 +283,32 @@ public class RhittaCommand implements CommandExecutor {
             );
 
             player.sendMessage(
-                    ChatColor.GOLD +
-                    "Selected: " +
-                    ChatColor.YELLOW +
-                    abilityName(ability)
+                    ChatColor.GOLD.toString()
+                            + "Selected: "
+                            + ChatColor.YELLOW
+                            + abilityName(ability)
             );
 
             player.sendMessage(
-                    ChatColor.GRAY +
-                    "Use the assigned hotbar slot + Shift Click."
+                    ChatColor.GRAY.toString()
+                            + "Hold the assigned hotbar slot and Right Click."
             );
 
             return true;
         }
 
         // =========================================================
-        // UNKNOWN COMMAND
+        // UNKNOWN
         // =========================================================
 
         player.sendMessage(
-                ChatColor.RED +
-                "Unknown Rhitta command."
+                ChatColor.RED.toString()
+                        + "Unknown Rhitta command."
         );
 
         player.sendMessage(
-                ChatColor.YELLOW +
-                "Use /rhitta help"
+                ChatColor.YELLOW.toString()
+                        + "Use /rhitta help"
         );
 
         return true;
@@ -340,10 +321,10 @@ public class RhittaCommand implements CommandExecutor {
     private void sendOwnerError(Player player) {
 
         player.sendMessage(
-                ChatColor.RED +
-                "Only " +
-                RhittaManager.OWNER_NAME +
-                " can use Rhitta."
+                ChatColor.RED.toString()
+                        + "Only "
+                        + RhittaManager.OWNER_NAME
+                        + " can use Rhitta."
         );
     }
 
@@ -363,7 +344,7 @@ public class RhittaCommand implements CommandExecutor {
     }
 
     // =============================================================
-    // NORMALIZE ABILITY
+    // NORMALIZE
     // =============================================================
 
     private String normalizeAbility(String input) {
@@ -403,63 +384,70 @@ public class RhittaCommand implements CommandExecutor {
     private void sendHelp(Player player) {
 
         player.sendMessage(
-                ChatColor.GOLD +
-                ChatColor.BOLD +
-                "========== RHITTA =========="
+                ChatColor.GOLD.toString()
+                        + ChatColor.BOLD.toString()
+                        + "========== RHITTA =========="
         );
 
         player.sendMessage(
-                ChatColor.YELLOW +
-                "/rhitta skills on"
-                + ChatColor.WHITE +
-                " - Enable Hotbar Skills"
+                ChatColor.YELLOW.toString()
+                        + "/rhitta skills on"
+                        + ChatColor.WHITE
+                        + " - Enable Hotbar Skills"
         );
 
         player.sendMessage(
-                ChatColor.YELLOW +
-                "/rhitta skills off"
-                + ChatColor.WHITE +
-                " - Disable Hotbar Skills"
+                ChatColor.YELLOW.toString()
+                        + "/rhitta skills off"
+                        + ChatColor.WHITE
+                        + " - Disable Hotbar Skills"
         );
 
         player.sendMessage(
-                ChatColor.YELLOW +
-                "/rhitta skills status"
-                + ChatColor.WHITE +
-                " - Skill status"
+                ChatColor.YELLOW.toString()
+                        + "/rhitta skills status"
+                        + ChatColor.WHITE
+                        + " - Skill status"
         );
 
         player.sendMessage(
-                ChatColor.YELLOW +
-                "/rhitta ability list"
-                + ChatColor.WHITE +
-                " - List abilities"
+                ChatColor.YELLOW.toString()
+                        + "/rhitta ability list"
+                        + ChatColor.WHITE
+                        + " - List abilities"
         );
 
         player.sendMessage(
-                ChatColor.YELLOW +
-                "/rhitta status"
-                + ChatColor.WHITE +
-                " - Rhitta status"
+                ChatColor.YELLOW.toString()
+                        + "/rhitta status"
+                        + ChatColor.WHITE
+                        + " - Rhitta status"
         );
 
         player.sendMessage(
-                ChatColor.YELLOW +
-                "/rhitta buffs <true|false>"
-                + ChatColor.WHITE +
-                " - Survival buffs"
+                ChatColor.YELLOW.toString()
+                        + "/rhitta buffs <true|false>"
+                        + ChatColor.WHITE
+                        + " - Survival buffs"
         );
 
         player.sendMessage(
-                ChatColor.YELLOW +
-                "/rhitta remove dupes"
-                + ChatColor.WHITE +
-                " - Remove duplicates"
+                ChatColor.YELLOW.toString()
+                        + "/rhitta remove dupes"
+                        + ChatColor.WHITE
+                        + " - Remove duplicates"
         );
 
         player.sendMessage(
-                ChatColor.GOLD +
-                "============================"
+                ChatColor.YELLOW.toString()
+                        + "/rhitta give"
+                        + ChatColor.WHITE
+                        + " - Restore Rhitta"
+        );
+
+        player.sendMessage(
+                ChatColor.GOLD.toString()
+                        + "============================"
         );
     }
 
@@ -474,9 +462,9 @@ public class RhittaCommand implements CommandExecutor {
                         .isSkillsEnabled();
 
         player.sendMessage(
-                ChatColor.GOLD +
-                "Rhitta Hotbar Skills: " +
-                (enabled
+                ChatColor.GOLD.toString()
+                        + "Rhitta Hotbar Skills: "
+                        + (enabled
                         ? ChatColor.GREEN + "ENABLED"
                         : ChatColor.RED + "DISABLED")
         );
@@ -484,8 +472,8 @@ public class RhittaCommand implements CommandExecutor {
         if (enabled) {
 
             player.sendMessage(
-                    ChatColor.GRAY +
-                    "Shift + Click activates the skill."
+                    ChatColor.GRAY.toString()
+                            + "Right Click activates the skill."
             );
         }
     }
@@ -497,54 +485,82 @@ public class RhittaCommand implements CommandExecutor {
     private void sendAbilityList(Player player) {
 
         player.sendMessage(
-                ChatColor.GOLD +
-                ChatColor.BOLD +
-                "========== RHITTA SKILLS =========="
+                ChatColor.GOLD.toString()
+                        + ChatColor.BOLD.toString()
+                        + "========== RHITTA SKILLS =========="
         );
 
         player.sendMessage(
-                ChatColor.GOLD +
-                "Slot 1 §f- §e🔥 Fireball"
+                ChatColor.GOLD.toString()
+                        + "Slot 1 "
+                        + ChatColor.WHITE
+                        + "- "
+                        + ChatColor.YELLOW
+                        + "🔥 Fireball"
         );
 
         player.sendMessage(
-                ChatColor.GOLD +
-                "Slot 2 §f- §e👑 Absolute Dominance"
+                ChatColor.GOLD.toString()
+                        + "Slot 2 "
+                        + ChatColor.WHITE
+                        + "- "
+                        + ChatColor.YELLOW
+                        + "👑 King's Aura"
         );
 
         player.sendMessage(
-                ChatColor.GOLD +
-                "Slot 3 §f- §e👑 King's Aura"
+                ChatColor.GOLD.toString()
+                        + "Slot 3 "
+                        + ChatColor.WHITE
+                        + "- "
+                        + ChatColor.YELLOW
+                        + "👑 Absolute Dominance"
         );
 
         player.sendMessage(
-                ChatColor.GOLD +
-                "Slot 4 §f- §e🛡 Unbreakable Ego"
+                ChatColor.GOLD.toString()
+                        + "Slot 4 "
+                        + ChatColor.WHITE
+                        + "- "
+                        + ChatColor.YELLOW
+                        + "🛡 Unbreakable Ego"
         );
 
         player.sendMessage(
-                ChatColor.GOLD +
-                "Slot 5 §f- §e⚔ Punishment of the Proud"
+                ChatColor.GOLD.toString()
+                        + "Slot 5 "
+                        + ChatColor.WHITE
+                        + "- "
+                        + ChatColor.YELLOW
+                        + "⚔ Punishment of the Proud"
         );
 
         player.sendMessage(
-                ChatColor.GOLD +
-                "Slot 6 §f- §e⚖ Pride's Judgment"
+                ChatColor.GOLD.toString()
+                        + "Slot 6 "
+                        + ChatColor.WHITE
+                        + "- "
+                        + ChatColor.YELLOW
+                        + "⚖ Pride's Judgment"
         );
 
         player.sendMessage(
-                ChatColor.GOLD +
-                "Slot 7 §f- §e☀ King's Authority Ultimate"
+                ChatColor.GOLD.toString()
+                        + "Slot 7 "
+                        + ChatColor.WHITE
+                        + "- "
+                        + ChatColor.YELLOW
+                        + "☀ King's Authority Ultimate"
         );
 
         player.sendMessage(
-                ChatColor.GRAY +
-                "Hold the assigned slot and Shift + Click to activate."
+                ChatColor.GRAY.toString()
+                        + "Hold the assigned slot and Right Click to activate."
         );
 
         player.sendMessage(
-                ChatColor.GOLD +
-                "=================================="
+                ChatColor.GOLD.toString()
+                        + "=================================="
         );
     }
 
@@ -558,56 +574,56 @@ public class RhittaCommand implements CommandExecutor {
                 plugin.getRhittaManager();
 
         player.sendMessage(
-                ChatColor.GOLD +
-                ChatColor.BOLD +
-                "========== RHITTA STATUS =========="
+                ChatColor.GOLD.toString()
+                        + ChatColor.BOLD.toString()
+                        + "========== RHITTA STATUS =========="
         );
 
         player.sendMessage(
-                ChatColor.YELLOW +
-                "Owner: " +
-                ChatColor.WHITE +
-                RhittaManager.OWNER_NAME
+                ChatColor.YELLOW.toString()
+                        + "Owner: "
+                        + ChatColor.WHITE
+                        + RhittaManager.OWNER_NAME
         );
 
         player.sendMessage(
-                ChatColor.YELLOW +
-                "Hotbar Skills: " +
-                (manager.isSkillsEnabled()
+                ChatColor.YELLOW.toString()
+                        + "Hotbar Skills: "
+                        + (manager.isSkillsEnabled()
                         ? ChatColor.GREEN + "ON"
                         : ChatColor.RED + "OFF")
         );
 
         player.sendMessage(
-                ChatColor.YELLOW +
-                "Defense: " +
-                ChatColor.WHITE +
-                manager.getDefense(player)
+                ChatColor.YELLOW.toString()
+                        + "Defense: "
+                        + ChatColor.WHITE
+                        + manager.getDefense(player)
         );
 
         String selected =
                 manager.getActiveAbility(player);
 
         player.sendMessage(
-                ChatColor.YELLOW +
-                "Selected Ability: " +
-                ChatColor.WHITE +
-                (selected == null
+                ChatColor.YELLOW.toString()
+                        + "Selected Ability: "
+                        + ChatColor.WHITE
+                        + (selected == null
                         ? "None"
                         : abilityName(selected))
         );
 
         player.sendMessage(
-                ChatColor.YELLOW +
-                "Survival Buffs: " +
-                (manager.isBuffsEnabled()
+                ChatColor.YELLOW.toString()
+                        + "Survival Buffs: "
+                        + (manager.isBuffsEnabled()
                         ? ChatColor.GREEN + "ENABLED"
                         : ChatColor.RED + "DISABLED")
         );
 
         player.sendMessage(
-                ChatColor.GOLD +
-                "=================================="
+                ChatColor.GOLD.toString()
+                        + "=================================="
         );
     }
 
