@@ -6,6 +6,6 @@ api-version: '26.1'
 commands:
   rhitta:
     description: Rhitta abilities and controls
-    usage: /rhitta <help|0|AD|KA|UE|PP|PJ|KAU|buffs|remove>
+    usage: /rhitta <help|skills|ability|status|buffs|give|clean|remove>
     aliases:
       - r
