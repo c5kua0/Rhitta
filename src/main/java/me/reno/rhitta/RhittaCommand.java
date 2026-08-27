@@ -4,15 +4,27 @@ import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 
-public class RhittaCommand implements CommandExecutor {
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
+public class RhittaCommand implements CommandExecutor, TabCompleter {
 
     private final RhittaPlugin plugin;
+    private final RhittaManager manager;
 
     public RhittaCommand(RhittaPlugin plugin) {
         this.plugin = plugin;
+        this.manager = plugin.getRhittaManager();
     }
+
+    // ============================================================
+    // COMMAND
+    // ============================================================
 
     @Override
     public boolean onCommand(
@@ -22,248 +34,346 @@ public class RhittaCommand implements CommandExecutor {
             String[] args) {
 
         if (!(sender instanceof Player)) {
-
             sender.sendMessage(
                     ChatColor.RED +
-                    "Only players can use Rhitta commands."
+                    "This command can only be used by a player."
             );
-
             return true;
         }
 
         Player player = (Player) sender;
-        RhittaManager manager = plugin.getRhittaManager();
+
+        // --------------------------------------------------------
+        // OWNER CHECK
+        // --------------------------------------------------------
+
+        if (!manager.isOwner(player)) {
+            player.sendMessage(
+                    ChatColor.RED +
+                    "Only the Rhitta owner can use this command."
+            );
+            return true;
+        }
+
+        // --------------------------------------------------------
+        // NO ARGUMENT
+        // --------------------------------------------------------
 
         if (args.length == 0) {
             sendHelp(player);
             return true;
         }
 
+        String sub = args[0].toLowerCase();
+
+        // --------------------------------------------------------
         // HELP
-        if (args[0].equalsIgnoreCase("help")) {
+        // --------------------------------------------------------
+
+        if (sub.equals("help")) {
             sendHelp(player);
             return true;
         }
 
-        // SKILLS
-        if (args[0].equalsIgnoreCase("skills")) {
-
-            if (!manager.isOwner(player)) {
-                sendOwnerError(player);
-                return true;
-            }
-
-            if (args.length < 2) {
-                sendSkillStatus(player);
-                return true;
-            }
-
-            switch (args[1].toLowerCase()) {
-
-                case "on":
-
-                    manager.setSkillsEnabled(true);
-
-                    player.sendMessage(
-                            ChatColor.GOLD +
-                            "Rhitta Hotbar Skills: " +
-                            ChatColor.GREEN +
-                            "ENABLED"
-                    );
-
-                    player.sendMessage(
-                            ChatColor.GRAY +
-                            "Right Click while holding Rhitta to activate."
-                    );
-
-                    break;
-
-                case "off":
-
-                    manager.setSkillsEnabled(false);
-
-                    player.sendMessage(
-                            ChatColor.GOLD +
-                            "Rhitta Hotbar Skills: " +
-                            ChatColor.RED +
-                            "DISABLED"
-                    );
-
-                    break;
-
-                case "status":
-
-                    sendSkillStatus(player);
-                    break;
-
-                default:
-
-                    player.sendMessage(
-                            ChatColor.YELLOW +
-                            "Usage: /rhitta skills <on|off|status>"
-                    );
-
-                    break;
-            }
-
-            return true;
-        }
-
+        // --------------------------------------------------------
         // ABILITY LIST
-        if (args.length >= 2
-                && args[0].equalsIgnoreCase("ability")
+        // --------------------------------------------------------
+
+        if (sub.equals("ability")
+                && args.length >= 2
                 && args[1].equalsIgnoreCase("list")) {
 
             sendAbilityList(player);
             return true;
         }
 
-        // STATUS
-        if (args[0].equalsIgnoreCase("status")) {
+        // Also allow:
+        // /rhitta abilities
+        // /rhitta abilitylist
 
+        if (sub.equals("abilities")
+                || sub.equals("abilitylist")) {
+
+            sendAbilityList(player);
+            return true;
+        }
+
+        // --------------------------------------------------------
+        // STATUS
+        // --------------------------------------------------------
+
+        if (sub.equals("status")) {
             sendStatus(player);
             return true;
         }
 
-        // BUFFS
-        if (args[0].equalsIgnoreCase("buffs")
-                || args[0].equalsIgnoreCase("buff")) {
+        // --------------------------------------------------------
+        // SKILLS TRUE/FALSE
+        //
+        // /rhitta skills true
+        // /rhitta skills false
+        // --------------------------------------------------------
 
-            if (!manager.isOwner(player)) {
-                sendOwnerError(player);
-                return true;
-            }
+        if (sub.equals("skills")) {
 
             if (args.length < 2) {
 
                 player.sendMessage(
                         ChatColor.YELLOW +
+                        "Skills are currently " +
+                        (manager.isBuffsEnabled()
+                                ? ChatColor.GREEN + "ENABLED"
+                                : ChatColor.RED + "DISABLED")
+                );
+
+                player.sendMessage(
+                        ChatColor.GRAY +
+                        "Usage: /rhitta skills <true|false>"
+                );
+
+                return true;
+            }
+
+            if (args[1].equalsIgnoreCase("true")
+                    || args[1].equalsIgnoreCase("on")
+                    || args[1].equalsIgnoreCase("enable")) {
+
+                manager.setBuffsEnabled(true);
+
+                player.sendMessage(
+                        ChatColor.GREEN +
+                        "Rhitta hotbar skills ENABLED."
+                );
+
+                player.sendMessage(
+                        ChatColor.GRAY +
+                        "Select hotbar slot 1-7 and Right Click."
+                );
+
+                return true;
+            }
+
+            if (args[1].equalsIgnoreCase("false")
+                    || args[1].equalsIgnoreCase("off")
+                    || args[1].equalsIgnoreCase("disable")) {
+
+                manager.setBuffsEnabled(false);
+
+                player.sendMessage(
+                        ChatColor.RED +
+                        "Rhitta hotbar skills DISABLED."
+                );
+
+                return true;
+            }
+
+            player.sendMessage(
+                    ChatColor.RED +
+                    "Use: /rhitta skills true"
+            );
+
+            player.sendMessage(
+                    ChatColor.RED +
+                    "or: /rhitta skills false"
+            );
+
+            return true;
+        }
+
+        // --------------------------------------------------------
+        // BUFFS TRUE/FALSE
+        //
+        // Compatibility with the older command.
+        // --------------------------------------------------------
+
+        if (sub.equals("buffs")) {
+
+            if (args.length < 2) {
+
+                player.sendMessage(
+                        ChatColor.YELLOW +
+                        "Rhitta skills are " +
+                        (manager.isBuffsEnabled()
+                                ? ChatColor.GREEN + "ENABLED"
+                                : ChatColor.RED + "DISABLED")
+                );
+
+                player.sendMessage(
+                        ChatColor.GRAY +
                         "Usage: /rhitta buffs <true|false>"
                 );
 
                 return true;
             }
 
-            if (!args[1].equalsIgnoreCase("true")
-                    && !args[1].equalsIgnoreCase("false")) {
+            if (args[1].equalsIgnoreCase("true")
+                    || args[1].equalsIgnoreCase("on")) {
+
+                manager.setBuffsEnabled(true);
 
                 player.sendMessage(
-                        ChatColor.RED +
-                        "Use true or false."
+                        ChatColor.GREEN +
+                        "Rhitta skills ENABLED."
                 );
 
                 return true;
             }
 
-            boolean enabled =
-                    Boolean.parseBoolean(args[1]);
+            if (args[1].equalsIgnoreCase("false")
+                    || args[1].equalsIgnoreCase("off")) {
 
-            manager.setBuffsEnabled(enabled);
+                manager.setBuffsEnabled(false);
 
-            player.sendMessage(
-                    ChatColor.GOLD +
-                    "Rhitta Survival Buffs: " +
-                    (enabled
-                            ? ChatColor.GREEN + "ENABLED"
-                            : ChatColor.RED + "DISABLED")
-            );
+                player.sendMessage(
+                        ChatColor.RED +
+                        "Rhitta skills DISABLED."
+                );
 
-            return true;
-        }
-
-        // REMOVE DUPES
-        if (args.length >= 2
-                && args[0].equalsIgnoreCase("remove")
-                && args[1].equalsIgnoreCase("dupes")) {
-
-            if (!manager.isOwner(player)) {
-                sendOwnerError(player);
                 return true;
             }
 
-            int removed = manager.removeDuplicates();
-
             player.sendMessage(
-                    ChatColor.GOLD +
-                    "Rhitta duplicate cleanup complete."
-            );
-
-            player.sendMessage(
-                    ChatColor.YELLOW +
-                    "Removed: " +
-                    ChatColor.WHITE +
-                    removed +
-                    ChatColor.YELLOW +
-                    " duplicate item(s)."
+                    ChatColor.RED +
+                    "Usage: /rhitta buffs <true|false>"
             );
 
             return true;
         }
 
-        // GIVE
-        if (args[0].equalsIgnoreCase("give")) {
+        // --------------------------------------------------------
+        // FIREBALL / ABILITY SHORTCUTS
+        // --------------------------------------------------------
 
-            if (!manager.isOwner(player)) {
-                sendOwnerError(player);
+        if (sub.equals("0")) {
+
+            player.sendMessage(
+                    ChatColor.GOLD +
+                    "Fireball is assigned to hotbar slot 1."
+            );
+
+            player.sendMessage(
+                    ChatColor.GRAY +
+                    "Hold Rhitta in your main hand, select slot 1, "
+                    + "then Right Click."
+            );
+
+            return true;
+        }
+
+        if (sub.equals("ad")) {
+
+            player.sendMessage(
+                    ChatColor.RED +
+                    "Absolute Dominance is assigned to hotbar slot 6."
+            );
+
+            return true;
+        }
+
+        if (sub.equals("ka")) {
+
+            player.sendMessage(
+                    ChatColor.GOLD +
+                    "King's Aura is assigned to hotbar slot 2."
+            );
+
+            return true;
+        }
+
+        if (sub.equals("ue")) {
+
+            player.sendMessage(
+                    ChatColor.BLUE +
+                    "Unbreakable Ego is assigned to hotbar slot 3."
+            );
+
+            return true;
+        }
+
+        if (sub.equals("pp")) {
+
+            player.sendMessage(
+                    ChatColor.RED +
+                    "Punishment of the Proud is assigned to hotbar slot 4."
+            );
+
+            return true;
+        }
+
+        if (sub.equals("pj")) {
+
+            player.sendMessage(
+                    ChatColor.DARK_PURPLE +
+                    "Pride's Judgment is assigned to hotbar slot 5."
+            );
+
+            return true;
+        }
+
+        if (sub.equals("kau")) {
+
+            player.sendMessage(
+                    ChatColor.YELLOW +
+                    "King's Authority Ultimate is assigned to hotbar slot 7."
+            );
+
+            return true;
+        }
+
+        // --------------------------------------------------------
+        // REMOVE
+        // --------------------------------------------------------
+
+        if (sub.equals("remove")) {
+
+            if (args.length >= 2
+                    && args[1].equalsIgnoreCase("dupes")) {
+
+                /*
+                 * The manager is responsible for maintaining
+                 * the unique Rhitta item.
+                 *
+                 * forceOneRhitta() guarantees the owner has
+                 * exactly one valid Rhitta.
+                 */
+
+                manager.forceOneRhitta(player);
+
+                player.sendMessage(
+                        ChatColor.GREEN +
+                        "Rhitta duplicate check completed."
+                );
+
                 return true;
             }
 
-            manager.forceOneRhitta(player);
+            if (args.length >= 2
+                    && args[1].equalsIgnoreCase("rhitta")) {
 
-            player.sendMessage(
-                    ChatColor.GOLD +
-                    "Rhitta has been restored."
-            );
+                player.sendMessage(
+                        ChatColor.YELLOW +
+                        "Rhitta is permanently bound to its owner."
+                );
 
-            return true;
-        }
+                player.sendMessage(
+                        ChatColor.GRAY +
+                        "Use /rhitta remove dupes instead."
+                );
 
-        // CLEAN
-        if (args[0].equalsIgnoreCase("clean")) {
-
-            if (!manager.isOwner(player)) {
-                sendOwnerError(player);
                 return true;
             }
 
-            int removed = manager.removeDuplicates();
-
             player.sendMessage(
-                    ChatColor.GOLD +
-                    "Cleanup complete. Removed " +
-                    ChatColor.YELLOW +
-                    removed +
-                    ChatColor.GOLD +
-                    " duplicate item(s)."
+                    ChatColor.RED +
+                    "Usage: /rhitta remove dupes"
             );
 
             return true;
         }
 
-        // DIRECT ABILITY SELECTION
-        if (isAbility(args[0])) {
-
-            if (!manager.isOwner(player)) {
-                sendOwnerError(player);
-                return true;
-            }
-
-            String ability = normalizeAbility(args[0]);
-
-            manager.setAbilityActive(
-                    player,
-                    ability
-            );
-
-            player.sendMessage(
-                    ChatColor.GOLD +
-                    "Selected: " +
-                    ChatColor.YELLOW +
-                    abilityName(ability)
-            );
-
-            return true;
-        }
+        // --------------------------------------------------------
+        // UNKNOWN COMMAND
+        // --------------------------------------------------------
 
         player.sendMessage(
                 ChatColor.RED +
@@ -271,329 +381,378 @@ public class RhittaCommand implements CommandExecutor {
         );
 
         player.sendMessage(
-                ChatColor.YELLOW +
+                ChatColor.GRAY +
                 "Use /rhitta help"
         );
 
         return true;
     }
 
-    private void sendOwnerError(Player player) {
-
-        player.sendMessage(
-                ChatColor.RED +
-                "Only " +
-                RhittaManager.OWNER_NAME +
-                " can use Rhitta."
-        );
-    }
-
-    private boolean isAbility(String input) {
-
-        return input.equalsIgnoreCase("0")
-                || input.equalsIgnoreCase("AD")
-                || input.equalsIgnoreCase("KA")
-                || input.equalsIgnoreCase("UE")
-                || input.equalsIgnoreCase("PP")
-                || input.equalsIgnoreCase("PJ")
-                || input.equalsIgnoreCase("KAU");
-    }
-
-    private String normalizeAbility(String input) {
-
-        switch (input.toUpperCase()) {
-
-            case "0":
-                return "fireball";
-
-            case "AD":
-                return "absolute_dominance";
-
-            case "KA":
-                return "king_aura";
-
-            case "UE":
-                return "unbreakable_ego";
-
-            case "PP":
-                return "punishment_proud";
-
-            case "PJ":
-                return "prides_judgment";
-
-            case "KAU":
-                return "kings_authority";
-
-            default:
-                return input.toLowerCase();
-        }
-    }
+    // ============================================================
+    // HELP
+    // ============================================================
 
     private void sendHelp(Player player) {
 
         player.sendMessage(
-                ChatColor.GOLD +
-                ChatColor.BOLD +
-                "========== RHITTA =========="
-        );
-
-        player.sendMessage(
-                ChatColor.YELLOW +
-                "/rhitta skills on" +
-                ChatColor.WHITE +
-                " - Enable Hotbar Skills"
-        );
-
-        player.sendMessage(
-                ChatColor.YELLOW +
-                "/rhitta skills off" +
-                ChatColor.WHITE +
-                " - Disable Hotbar Skills"
-        );
-
-        player.sendMessage(
-                ChatColor.YELLOW +
-                "/rhitta skills status" +
-                ChatColor.WHITE +
-                " - Skill status"
-        );
-
-        player.sendMessage(
-                ChatColor.YELLOW +
-                "/rhitta ability list" +
-                ChatColor.WHITE +
-                " - List abilities"
-        );
-
-        player.sendMessage(
-                ChatColor.YELLOW +
-                "/rhitta status" +
-                ChatColor.WHITE +
-                " - Rhitta status"
-        );
-
-        player.sendMessage(
-                ChatColor.YELLOW +
-                "/rhitta buffs <true|false>" +
-                ChatColor.WHITE +
-                " - Survival buffs"
-        );
-
-        player.sendMessage(
-                ChatColor.YELLOW +
-                "/rhitta remove dupes" +
-                ChatColor.WHITE +
-                " - Remove duplicates"
-        );
-
-        player.sendMessage(
-                ChatColor.YELLOW +
-                "Right Click" +
-                ChatColor.WHITE +
-                " - Activate selected hotbar skill"
+                ChatColor.DARK_PURPLE +
+                "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         );
 
         player.sendMessage(
                 ChatColor.GOLD +
-                "============================"
-        );
-    }
-
-    private void sendSkillStatus(Player player) {
-
-        boolean enabled =
-                plugin.getRhittaManager()
-                        .isSkillsEnabled();
-
-        player.sendMessage(
-                ChatColor.GOLD +
-                "Rhitta Hotbar Skills: " +
-                (enabled
-                        ? ChatColor.GREEN + "ENABLED"
-                        : ChatColor.RED + "DISABLED")
-        );
-
-        if (enabled) {
-
-            player.sendMessage(
-                    ChatColor.GRAY +
-                    "Hold Rhitta and Right Click."
-            );
-        }
-    }
-
-    private void sendAbilityList(Player player) {
-
-        player.sendMessage(
-                ChatColor.GOLD +
-                ChatColor.BOLD +
-                "========== RHITTA SKILLS =========="
-        );
-
-        player.sendMessage(
-                ChatColor.GOLD +
-                "Slot 1 " +
-                ChatColor.WHITE +
-                "- " +
-                ChatColor.YELLOW +
-                "🔥 Fireball"
-        );
-
-        player.sendMessage(
-                ChatColor.GOLD +
-                "Slot 2 " +
-                ChatColor.WHITE +
-                "- " +
-                ChatColor.YELLOW +
-                "👑 King's Aura"
-        );
-
-        player.sendMessage(
-                ChatColor.GOLD +
-                "Slot 3 " +
-                ChatColor.WHITE +
-                "- " +
-                ChatColor.YELLOW +
-                "👑 Absolute Dominance"
-        );
-
-        player.sendMessage(
-                ChatColor.GOLD +
-                "Slot 4 " +
-                ChatColor.WHITE +
-                "- " +
-                ChatColor.YELLOW +
-                "🛡 Unbreakable Ego"
-        );
-
-        player.sendMessage(
-                ChatColor.GOLD +
-                "Slot 5 " +
-                ChatColor.WHITE +
-                "- " +
-                ChatColor.YELLOW +
-                "⚔ Punishment of the Proud"
-        );
-
-        player.sendMessage(
-                ChatColor.GOLD +
-                "Slot 6 " +
-                ChatColor.WHITE +
-                "- " +
-                ChatColor.YELLOW +
-                "⚖ Pride's Judgment"
-        );
-
-        player.sendMessage(
-                ChatColor.GOLD +
-                "Slot 7 " +
-                ChatColor.WHITE +
-                "- " +
-                ChatColor.YELLOW +
-                "☀ King's Authority Ultimate"
+                "             RHITTA"
         );
 
         player.sendMessage(
                 ChatColor.GRAY +
-                "Hold Rhitta and Right Click to activate."
+                "             Ability System"
+        );
+
+        player.sendMessage(
+                ChatColor.DARK_PURPLE +
+                "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        );
+
+        player.sendMessage(
+                ChatColor.YELLOW +
+                "/rhitta ability list"
+                + ChatColor.GRAY +
+                " - Show all abilities"
+        );
+
+        player.sendMessage(
+                ChatColor.YELLOW +
+                "/rhitta status"
+                + ChatColor.GRAY +
+                " - Check your Rhitta status"
+        );
+
+        player.sendMessage(
+                ChatColor.YELLOW +
+                "/rhitta skills true"
+                + ChatColor.GRAY +
+                " - Enable hotbar skills"
+        );
+
+        player.sendMessage(
+                ChatColor.YELLOW +
+                "/rhitta skills false"
+                + ChatColor.GRAY +
+                " - Disable hotbar skills"
+        );
+
+        player.sendMessage(
+                ChatColor.YELLOW +
+                "/rhitta remove dupes"
+                + ChatColor.GRAY +
+                " - Fix duplicate Rhitta items"
+        );
+
+        player.sendMessage(
+                ChatColor.YELLOW +
+                "/rhitta help"
+                + ChatColor.GRAY +
+                " - Show this menu"
+        );
+
+        player.sendMessage(
+                ChatColor.DARK_PURPLE +
+                "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         );
 
         player.sendMessage(
                 ChatColor.GOLD +
-                "=================================="
+                "HOTBAR CONTROLS"
+        );
+
+        player.sendMessage(
+                ChatColor.GRAY +
+                "Select slot 1-7, then "
+                + ChatColor.YELLOW +
+                "Right Click"
+                + ChatColor.GRAY +
+                " to activate."
+        );
+
+        player.sendMessage(
+                ChatColor.GRAY +
+                "Rhitta must be held in your main hand."
+        );
+
+        player.sendMessage(
+                ChatColor.DARK_PURPLE +
+                "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         );
     }
+
+    // ============================================================
+    // ABILITY LIST
+    // ============================================================
+
+    private void sendAbilityList(Player player) {
+
+        player.sendMessage(
+                ChatColor.DARK_PURPLE +
+                "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        );
+
+        player.sendMessage(
+                ChatColor.GOLD +
+                "          RHITTA ABILITIES"
+        );
+
+        player.sendMessage(
+                ChatColor.DARK_PURPLE +
+                "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        );
+
+        player.sendMessage(
+                ChatColor.RED +
+                "1. FIREBALL"
+                + ChatColor.GRAY +
+                " - Powerful fire projectile"
+        );
+
+        player.sendMessage(
+                ChatColor.RED +
+                "2. KING'S AURA"
+                + ChatColor.GRAY +
+                " - Strengthens you and weakens enemies"
+        );
+
+        player.sendMessage(
+                ChatColor.BLUE +
+                "3. UNBREAKABLE EGO"
+                + ChatColor.GRAY +
+                " - Massive defensive power"
+        );
+
+        player.sendMessage(
+                ChatColor.RED +
+                "4. PUNISHMENT OF THE PROUD"
+                + ChatColor.GRAY +
+                " - Dash and destroy enemies"
+        );
+
+        player.sendMessage(
+                ChatColor.DARK_PURPLE +
+                "5. PRIDE'S JUDGMENT"
+                + ChatColor.GRAY +
+                " - Divine straight-line attack"
+        );
+
+        player.sendMessage(
+                ChatColor.RED +
+                "6. ABSOLUTE DOMINANCE"
+                + ChatColor.GRAY +
+                " - Intimidates nearby enemies"
+        );
+
+        player.sendMessage(
+                ChatColor.GOLD +
+                "7. KING'S AUTHORITY"
+                + ChatColor.GRAY +
+                " - Ultimate area attack"
+        );
+
+        player.sendMessage(
+                ChatColor.DARK_PURPLE +
+                "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        );
+
+        player.sendMessage(
+                ChatColor.YELLOW +
+                "Select the corresponding hotbar slot."
+        );
+
+        player.sendMessage(
+                ChatColor.YELLOW +
+                "Then Right Click to activate."
+        );
+    }
+
+    // ============================================================
+    // STATUS
+    // ============================================================
 
     private void sendStatus(Player player) {
 
-        RhittaManager manager =
-                plugin.getRhittaManager();
+        boolean hasRhitta =
+                manager.hasRhitta(player);
+
+        boolean skillsEnabled =
+                manager.isBuffsEnabled();
+
+        int defense =
+                manager.getDefense(player);
 
         player.sendMessage(
-                ChatColor.GOLD +
-                ChatColor.BOLD +
-                "========== RHITTA STATUS =========="
-        );
-
-        player.sendMessage(
-                ChatColor.YELLOW +
-                "Owner: " +
-                ChatColor.WHITE +
-                RhittaManager.OWNER_NAME
-        );
-
-        player.sendMessage(
-                ChatColor.YELLOW +
-                "Hotbar Skills: " +
-                (manager.isSkillsEnabled()
-                        ? ChatColor.GREEN + "ON"
-                        : ChatColor.RED + "OFF")
-        );
-
-        player.sendMessage(
-                ChatColor.YELLOW +
-                "Defense: " +
-                ChatColor.WHITE +
-                manager.getDefense(player)
-        );
-
-        String selected =
-                manager.getActiveAbility(player);
-
-        player.sendMessage(
-                ChatColor.YELLOW +
-                "Selected Ability: " +
-                ChatColor.WHITE +
-                (selected == null
-                        ? "None"
-                        : abilityName(selected))
-        );
-
-        player.sendMessage(
-                ChatColor.YELLOW +
-                "Survival Buffs: " +
-                (manager.isBuffsEnabled()
-                        ? ChatColor.GREEN + "ENABLED"
-                        : ChatColor.RED + "DISABLED")
+                ChatColor.DARK_PURPLE +
+                "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         );
 
         player.sendMessage(
                 ChatColor.GOLD +
-                "=================================="
+                "           RHITTA STATUS"
+        );
+
+        player.sendMessage(
+                ChatColor.DARK_PURPLE +
+                "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        );
+
+        player.sendMessage(
+                ChatColor.GRAY +
+                "Owner: "
+                + ChatColor.WHITE
+                + player.getName()
+        );
+
+        player.sendMessage(
+                ChatColor.GRAY +
+                "Rhitta: "
+                + (hasRhitta
+                ? ChatColor.GREEN + "YES"
+                : ChatColor.RED + "NO")
+        );
+
+        player.sendMessage(
+                ChatColor.GRAY +
+                "Hotbar Skills: "
+                + (skillsEnabled
+                ? ChatColor.GREEN + "ENABLED"
+                : ChatColor.RED + "DISABLED")
+        );
+
+        player.sendMessage(
+                ChatColor.GRAY +
+                "Defense: "
+                + ChatColor.AQUA
+                + defense
+                + ChatColor.GRAY
+                + " points"
+        );
+
+        player.sendMessage(
+                ChatColor.GRAY +
+                "Damage Bonus: "
+                + ChatColor.RED
+                + "+20"
+        );
+
+        player.sendMessage(
+                ChatColor.GRAY +
+                "Life Steal: "
+                + ChatColor.GREEN
+                + "+4 HP"
+        );
+
+        player.sendMessage(
+                ChatColor.DARK_PURPLE +
+                "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         );
     }
 
-    private String abilityName(String ability) {
+    // ============================================================
+    // TAB COMPLETION
+    // ============================================================
 
-        if (ability == null) {
-            return "None";
+    @Override
+    public List<String> onTabComplete(
+            CommandSender sender,
+            Command command,
+            String alias,
+            String[] args) {
+
+        if (!(sender instanceof Player)) {
+            return Collections.emptyList();
         }
 
-        switch (ability.toLowerCase()) {
+        if (args.length == 1) {
 
-            case "fireball":
-                return "Fireball";
+            List<String> suggestions =
+                    Arrays.asList(
+                            "help",
+                            "ability",
+                            "abilities",
+                            "abilitylist",
+                            "status",
+                            "skills",
+                            "buffs",
+                            "remove",
+                            "0",
+                            "AD",
+                            "KA",
+                            "UE",
+                            "PP",
+                            "PJ",
+                            "KAU"
+                    );
 
-            case "absolute_dominance":
-                return "Absolute Dominance";
-
-            case "king_aura":
-                return "King's Aura";
-
-            case "unbreakable_ego":
-                return "Unbreakable Ego";
-
-            case "punishment_proud":
-                return "Punishment of the Proud";
-
-            case "prides_judgment":
-                return "Pride's Judgment";
-
-            case "kings_authority":
-                return "King's Authority Ultimate";
-
-            default:
-                return ability;
+            return filter(
+                    suggestions,
+                    args[0]
+            );
         }
+
+        if (args.length == 2) {
+
+            if (args[0].equalsIgnoreCase("ability")) {
+
+                return filter(
+                        Collections.singletonList("list"),
+                        args[1]
+                );
+            }
+
+            if (args[0].equalsIgnoreCase("skills")
+                    || args[0].equalsIgnoreCase("buffs")) {
+
+                return filter(
+                        Arrays.asList(
+                                "true",
+                                "false"
+                        ),
+                        args[1]
+                );
+            }
+
+            if (args[0].equalsIgnoreCase("remove")) {
+
+                return filter(
+                        Collections.singletonList("dupes"),
+                        args[1]
+                );
+            }
+        }
+
+        return Collections.emptyList();
+    }
+
+    // ============================================================
+    // TAB FILTER
+    // ============================================================
+
+    private List<String> filter(
+            List<String> values,
+            String input) {
+
+        List<String> result =
+                new ArrayList<>();
+
+        String lower =
+                input.toLowerCase();
+
+        for (String value : values) {
+
+            if (value.toLowerCase()
+                    .startsWith(lower)) {
+
+                result.add(value);
+            }
+        }
+
+        return result;
     }
 }
