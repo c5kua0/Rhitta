@@ -1,6 +1,7 @@
 package me.reno.rhitta;
 
 import org.bukkit.ChatColor;
+import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
@@ -31,7 +32,10 @@ import org.bukkit.potion.PotionEffectType;
 import org.bukkit.util.Vector;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 
 public class RhittaListener implements Listener {
 
@@ -76,7 +80,11 @@ public class RhittaListener implements Listener {
     private static final double AD_RADIUS = 8.0;
     private static final double KA_RADIUS = 8.0;
     private static final double KAU_RADIUS = 12.0;
-    private static final double PJ_RANGE = 12.0;
+
+    // Pride's Judgment / Energy Blast
+    private static final double PJ_RANGE = 25.0;
+    private static final double PJ_THICKNESS = 1.5;
+
     private static final double PP_RANGE = 8.0;
 
     // ============================================================
@@ -124,15 +132,17 @@ public class RhittaListener implements Listener {
 
         Player player = event.getPlayer();
 
-        plugin.getServer().getScheduler().runTaskLater(
-                plugin,
-                () -> manager.forceOneRhitta(player),
-                1L
-        );
+        plugin.getServer()
+                .getScheduler()
+                .runTaskLater(
+                        plugin,
+                        () -> manager.forceOneRhitta(player),
+                        1L
+                );
     }
 
     // ============================================================
-    // COMBAT
+    // NORMAL RHITTA COMBAT
     // ============================================================
 
     @EventHandler(priority = EventPriority.HIGH)
@@ -150,13 +160,14 @@ public class RhittaListener implements Listener {
         }
 
         ItemStack weapon =
-                player.getInventory().getItemInMainHand();
+                player.getInventory()
+                        .getItemInMainHand();
 
         if (!manager.isRhitta(weapon)) {
             return;
         }
 
-        // Physical attack bonus
+        // Physical attack
         event.setDamage(
                 event.getDamage() + PHYSICAL_ATTACK
         );
@@ -179,7 +190,8 @@ public class RhittaListener implements Listener {
         // Critical particles
         player.getWorld().spawnParticle(
                 Particle.CRIT,
-                player.getLocation().add(0, 1, 0),
+                player.getLocation()
+                        .add(0, 1, 0),
                 8,
                 0.3,
                 0.4,
@@ -189,86 +201,52 @@ public class RhittaListener implements Listener {
     }
 
     // ============================================================
-    // HOTBAR SKILLS
-    //
-    // IMPORTANT:
-    //
-    // Skills no longer require Rhitta to be held.
-    //
-    // RIGHT CLICK AIR = SKILL
-    //
-    // RIGHT CLICK BLOCK = NORMAL MINECRAFT INTERACTION
-    //
-    // This means:
-    // - Logs can be stripped
-    // - Chests can open
-    // - Doors work
-    // - Buttons work
-    // - Levers work
-    // - Crafting tables work
-    // - Furnaces work
+    // SKILL USE
     // ============================================================
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onSkillUse(PlayerInteractEvent event) {
 
-        // Only main hand
         if (event.getHand() != EquipmentSlot.HAND) {
             return;
         }
 
-        Player player = event.getPlayer();
+        Player player =
+                event.getPlayer();
 
-        // Owner only
         if (!manager.isOwner(player)) {
             return;
         }
 
-        // Skills must be enabled
         if (!manager.isSkillsEnabled()) {
             return;
         }
 
-        Action action = event.getAction();
+        Action action =
+                event.getAction();
 
-        // ========================================================
-        // RIGHT CLICK BLOCK
-        //
-        // DO NOTHING.
-        //
-        // This is important because it allows normal Minecraft
-        // interactions such as stripping logs.
-        // ========================================================
-
+        // Allow normal block interactions
         if (action == Action.RIGHT_CLICK_BLOCK) {
             return;
         }
-
-        // ========================================================
-        // ONLY RIGHT CLICK AIR ACTIVATES SKILLS
-        // ========================================================
 
         if (action != Action.RIGHT_CLICK_AIR) {
             return;
         }
 
-        // Get currently selected hotbar slot
         int slot =
-                player.getInventory().getHeldItemSlot();
+                player.getInventory()
+                        .getHeldItemSlot();
 
-        // Get skill assigned to this slot
         String ability =
                 manager.getAbilityForSlot(slot);
 
-        // No ability assigned
         if (ability == null) {
             return;
         }
 
-        // Prevent normal right-click action
         event.setCancelled(true);
 
-        // Activate selected ability
         activateAbility(
                 player,
                 ability
@@ -354,12 +332,15 @@ public class RhittaListener implements Listener {
                 player.getEyeLocation();
 
         Vector direction =
-                eye.getDirection().normalize();
+                eye.getDirection()
+                        .normalize();
 
         Location spawn =
-                eye.clone().add(
-                        direction.clone().multiply(1.2)
-                );
+                eye.clone()
+                        .add(
+                                direction.clone()
+                                        .multiply(1.2)
+                        );
 
         Fireball fireball =
                 player.getWorld().spawn(
@@ -373,7 +354,6 @@ public class RhittaListener implements Listener {
         fireball.setYield(0F);
         fireball.setIsIncendiary(false);
 
-        // Flame around player
         spawnParticles(
                 player,
                 Particle.FLAME,
@@ -423,7 +403,6 @@ public class RhittaListener implements Listener {
             return;
         }
 
-        // Explosion-style particle effect
         Location location =
                 fireball.getLocation();
 
@@ -447,7 +426,6 @@ public class RhittaListener implements Listener {
                 0.03
         );
 
-        // Damage entity if hit
         if (event.getHitEntity()
                 instanceof LivingEntity) {
 
@@ -788,6 +766,9 @@ public class RhittaListener implements Listener {
 
     // ============================================================
     // PRIDE'S JUDGMENT
+    // 25-BLOCK ENERGY BLAST
+    // 1.5-BLOCK THICK
+    // BLACK + RED
     // ============================================================
 
     private void activatePridesJudgment(
@@ -818,11 +799,21 @@ public class RhittaListener implements Listener {
                 start.getDirection()
                         .normalize();
 
-        int hit = 0;
+        // ========================================================
+        // TARGETS ALREADY HIT
+        // Prevents multiple damage from the same blast.
+        // ========================================================
 
-        for (double distance = 1.0;
+        Set<UUID> alreadyHit =
+                new HashSet<>();
+
+        // ========================================================
+        // ENERGY BLAST
+        // ========================================================
+
+        for (double distance = 0.8;
              distance <= PJ_RANGE;
-             distance += 0.35) {
+             distance += 0.20) {
 
             Location point =
                     start.clone()
@@ -831,33 +822,84 @@ public class RhittaListener implements Listener {
                                             .multiply(distance)
                             );
 
+            // ====================================================
+            // RED CORE
+            // ====================================================
+
             player.getWorld().spawnParticle(
-                    Particle.END_ROD,
+                    Particle.DUST,
                     point,
-                    4,
-                    0.05,
-                    0.05,
-                    0.05,
-                    0.01
+                    6,
+                    PJ_THICKNESS * 0.45,
+                    PJ_THICKNESS * 0.45,
+                    PJ_THICKNESS * 0.45,
+                    0,
+                    new Particle.DustOptions(
+                            Color.RED,
+                            2.5f
+                    )
+            );
+
+            // ====================================================
+            // BLACK OUTER ENERGY
+            // ====================================================
+
+            player.getWorld().spawnParticle(
+                    Particle.DUST,
+                    point,
+                    5,
+                    PJ_THICKNESS * 0.65,
+                    PJ_THICKNESS * 0.65,
+                    PJ_THICKNESS * 0.65,
+                    0,
+                    new Particle.DustOptions(
+                            Color.BLACK,
+                            3.0f
+                    )
+            );
+
+            // ====================================================
+            // FLASHY PARTICLES
+            // ====================================================
+
+            player.getWorld().spawnParticle(
+                    Particle.CRIT,
+                    point,
+                    3,
+                    0.35,
+                    0.35,
+                    0.35,
+                    0.08
             );
 
             player.getWorld().spawnParticle(
                     Particle.ENCHANT,
                     point,
-                    3,
-                    0.1,
-                    0.1,
-                    0.1,
-                    0.02
+                    2,
+                    0.3,
+                    0.3,
+                    0.3,
+                    0.08
             );
+
+            // ====================================================
+            // DAMAGE
+            // ====================================================
 
             for (LivingEntity entity :
                     getNearbyEnemies(
                             player,
-                            PJ_RANGE)) {
+                            distance + PJ_THICKNESS)) {
+
+                if (alreadyHit.contains(
+                        entity.getUniqueId())) {
+
+                    continue;
+                }
 
                 if (entity.getLocation()
-                        .distance(point) > 1.3) {
+                        .distance(point)
+                        > PJ_THICKNESS) {
 
                     continue;
                 }
@@ -869,21 +911,129 @@ public class RhittaListener implements Listener {
 
                 entity.setFireTicks(100);
 
-                spawnHitParticles(
-                        entity,
-                        Particle.END_ROD
+                alreadyHit.add(
+                        entity.getUniqueId()
                 );
 
-                hit++;
+                // =================================================
+                // RED HIT EFFECT
+                // =================================================
+
+                Location hitLocation =
+                        entity.getLocation()
+                                .add(0, 1, 0);
+
+                entity.getWorld().spawnParticle(
+                        Particle.DUST,
+                        hitLocation,
+                        30,
+                        0.6,
+                        0.8,
+                        0.6,
+                        0,
+                        new Particle.DustOptions(
+                                Color.RED,
+                                3.0f
+                        )
+                );
+
+                // =================================================
+                // BLACK HIT EFFECT
+                // =================================================
+
+                entity.getWorld().spawnParticle(
+                        Particle.DUST,
+                        hitLocation,
+                        20,
+                        0.7,
+                        0.7,
+                        0.7,
+                        0,
+                        new Particle.DustOptions(
+                                Color.BLACK,
+                                3.5f
+                        )
+                );
+
+                // =================================================
+                // CRIT BURST
+                // =================================================
+
+                entity.getWorld().spawnParticle(
+                        Particle.CRIT,
+                        hitLocation,
+                        20,
+                        0.5,
+                        0.7,
+                        0.5,
+                        0.1
+                );
             }
         }
+
+        // ========================================================
+        // LARGE STARTING FLASH
+        // ========================================================
+
+        player.getWorld().spawnParticle(
+                Particle.DUST,
+                start,
+                50,
+                1.0,
+                1.0,
+                1.0,
+                0,
+                new Particle.DustOptions(
+                        Color.RED,
+                        3.5f
+                )
+        );
+
+        player.getWorld().spawnParticle(
+                Particle.DUST,
+                start,
+                40,
+                1.0,
+                1.0,
+                1.0,
+                0,
+                new Particle.DustOptions(
+                        Color.BLACK,
+                        4.0f
+                )
+        );
+
+        player.getWorld().spawnParticle(
+                Particle.CRIT,
+                start,
+                25,
+                0.8,
+                0.8,
+                0.8,
+                0.15
+        );
+
+        // ========================================================
+        // SOUND
+        // ========================================================
 
         player.getWorld().playSound(
                 player.getLocation(),
                 Sound.ENTITY_EVOKER_CAST_SPELL,
-                1.0f,
-                0.7f
+                1.2f,
+                0.5f
         );
+
+        player.getWorld().playSound(
+                player.getLocation(),
+                Sound.ENTITY_WITHER_SHOOT,
+                1.0f,
+                0.8f
+        );
+
+        // ========================================================
+        // MESSAGE
+        // ========================================================
 
         sendActivated(
                 player,
@@ -892,7 +1042,7 @@ public class RhittaListener implements Listener {
 
         player.sendMessage(
                 ChatColor.GRAY +
-                String.valueOf(hit) +
+                String.valueOf(alreadyHit.size()) +
                 " enemy/enemies judged."
         );
     }
@@ -1137,13 +1287,14 @@ public class RhittaListener implements Listener {
                 new ArrayList<>();
 
         for (LivingEntity entity :
-                player.getWorld().getLivingEntities()) {
+                player.getWorld()
+                        .getLivingEntities()) {
 
             if (entity == player) {
                 continue;
             }
 
-            // Don't damage other players
+            // Don't damage players
             if (entity instanceof Player) {
                 continue;
             }
@@ -1201,6 +1352,10 @@ public class RhittaListener implements Listener {
                 0.05
         );
     }
+
+    // ============================================================
+    // RING
+    // ============================================================
 
     private void spawnRing(
             Player player,
@@ -1328,7 +1483,7 @@ public class RhittaListener implements Listener {
     }
 
     // ============================================================
-    // FORMAT ABILITY NAME
+    // FORMAT ABILITY
     // ============================================================
 
     private String formatAbility(
@@ -1387,7 +1542,6 @@ public class RhittaListener implements Listener {
             return;
         }
 
-        // Only owner can pick up Rhitta
         if (!manager.isOwner(player)) {
 
             event.setCancelled(true);
@@ -1449,6 +1603,10 @@ public class RhittaListener implements Listener {
             event.setCancelled(true);
         }
     }
+
+    // ============================================================
+    // INVENTORY DRAG
+    // ============================================================
 
     @EventHandler
     public void onInventoryDrag(
