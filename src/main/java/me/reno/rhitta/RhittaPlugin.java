@@ -9,9 +9,21 @@ public class RhittaPlugin extends JavaPlugin {
     @Override
     public void onEnable() {
 
+        // ========================================================
+        // CONFIG
+        // ========================================================
+
         saveDefaultConfig();
 
+        // ========================================================
+        // MANAGER
+        // ========================================================
+
         rhittaManager = new RhittaManager(this);
+
+        // ========================================================
+        // LISTENER
+        // ========================================================
 
         RhittaListener listener =
                 new RhittaListener(
@@ -26,6 +38,10 @@ public class RhittaPlugin extends JavaPlugin {
                         this
                 );
 
+        // ========================================================
+        // COMMAND
+        // ========================================================
+
         RhittaCommand command =
                 new RhittaCommand(this);
 
@@ -34,14 +50,41 @@ public class RhittaPlugin extends JavaPlugin {
             getCommand("rhitta")
                     .setExecutor(command);
 
-            // Only add setTabCompleter here if
-            // RhittaCommand implements TabCompleter.
+            getCommand("rhitta")
+                    .setTabCompleter(command);
+
+        } else {
+
+            getLogger().severe(
+                    "Command 'rhitta' is missing from plugin.yml!"
+            );
         }
+
+        // ========================================================
+        // ENABLE MESSAGE
+        // ========================================================
+
+        getLogger().info(
+                "================================="
+        );
 
         getLogger().info(
                 "Rhitta 2.0 enabled!"
         );
+
+        getLogger().info(
+                "Owner: " +
+                RhittaManager.OWNER_NAME
+        );
+
+        getLogger().info(
+                "================================="
+        );
     }
+
+    // ============================================================
+    // DISABLE
+    // ============================================================
 
     @Override
     public void onDisable() {
@@ -51,7 +94,12 @@ public class RhittaPlugin extends JavaPlugin {
         );
     }
 
+    // ============================================================
+    // MANAGER GETTER
+    // ============================================================
+
     public RhittaManager getRhittaManager() {
+
         return rhittaManager;
     }
 }
