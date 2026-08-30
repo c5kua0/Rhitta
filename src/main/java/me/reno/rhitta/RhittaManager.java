@@ -174,7 +174,8 @@ public class RhittaManager {
                         PersistentDataType.BYTE
                 );
 
-        return flag != null && flag == (byte) 1;
+        return flag != null &&
+                flag == (byte) 1;
     }
 
     // ============================================================
@@ -280,6 +281,7 @@ public class RhittaManager {
             return;
         }
 
+        // Do not create another Rhitta
         if (hasRhitta(player)) {
             return;
         }
@@ -290,7 +292,10 @@ public class RhittaManager {
         PlayerInventory inventory =
                 player.getInventory();
 
-        // Main hand
+        // --------------------------------------------------------
+        // MAIN HAND
+        // --------------------------------------------------------
+
         if (inventory.getItemInMainHand()
                 .getType()
                 .isAir()) {
@@ -302,7 +307,10 @@ public class RhittaManager {
             return;
         }
 
-        // Offhand
+        // --------------------------------------------------------
+        // OFFHAND
+        // --------------------------------------------------------
+
         if (inventory.getItemInOffHand()
                 .getType()
                 .isAir()) {
@@ -314,17 +322,55 @@ public class RhittaManager {
             return;
         }
 
-        // Inventory
+        // --------------------------------------------------------
+        // NORMAL INVENTORY
+        // --------------------------------------------------------
+
         Map<Integer, ItemStack> leftover =
                 inventory.addItem(rhitta);
 
-        // If inventory is full, keep Rhitta safe
+        // --------------------------------------------------------
+        // INVENTORY FULL
+        // --------------------------------------------------------
+
         if (!leftover.isEmpty()) {
 
-            player.getWorld().dropItemNaturally(
-                    player.getLocation(),
-                    rhitta
+            /*
+             * IMPORTANT:
+             *
+             * Never drop Rhitta on the ground.
+             *
+             * If the inventory is full, wait until the
+             * inventory has an available slot and give it.
+             */
+
+            player.sendMessage(
+                    ChatColor.YELLOW +
+                    "Your inventory is full. " +
+                    "Rhitta will remain protected."
             );
+
+            plugin.getServer()
+                    .getScheduler()
+                    .runTaskLater(
+                            plugin,
+                            () -> {
+
+                                if (!player.isOnline()) {
+                                    return;
+                                }
+
+                                if (!isOwner(player)) {
+                                    return;
+                                }
+
+                                if (!hasRhitta(player)) {
+                                    giveRhitta(player);
+                                }
+
+                            },
+                            20L
+                    );
         }
     }
 
@@ -555,7 +601,9 @@ public class RhittaManager {
 
             removed += offhand.getAmount();
 
-            inventory.setItemInOffHand(null);
+            inventory.setItemInOffHand(
+                    null
+            );
         }
 
         // --------------------------------------------------------
