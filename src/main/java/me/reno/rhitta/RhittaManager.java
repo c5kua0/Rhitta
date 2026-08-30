@@ -122,7 +122,10 @@ public class RhittaManager {
 
         meta.setUnbreakable(true);
 
-        // Unique Rhitta ID
+        // --------------------------------------------------------
+        // UNIQUE RHITTA ID
+        // --------------------------------------------------------
+
         rhittaCounter++;
 
         String id =
@@ -131,11 +134,19 @@ public class RhittaManager {
                 "-" +
                 UUID.randomUUID();
 
+        // --------------------------------------------------------
+        // RHITTA FLAG
+        // --------------------------------------------------------
+
         meta.getPersistentDataContainer().set(
                 rhittaKey,
                 PersistentDataType.BYTE,
                 (byte) 1
         );
+
+        // --------------------------------------------------------
+        // RHITTA ID
+        // --------------------------------------------------------
 
         meta.getPersistentDataContainer().set(
                 rhittaIdKey,
@@ -241,6 +252,10 @@ public class RhittaManager {
         PlayerInventory inventory =
                 player.getInventory();
 
+        // --------------------------------------------------------
+        // INVENTORY
+        // --------------------------------------------------------
+
         for (ItemStack item :
                 inventory.getContents()) {
 
@@ -249,12 +264,20 @@ public class RhittaManager {
             }
         }
 
+        // --------------------------------------------------------
+        // OFFHAND
+        // --------------------------------------------------------
+
         ItemStack offhand =
                 inventory.getItemInOffHand();
 
         if (isRhitta(offhand)) {
             count += offhand.getAmount();
         }
+
+        // --------------------------------------------------------
+        // ENDER CHEST
+        // --------------------------------------------------------
 
         for (ItemStack item :
                 player.getEnderChest().getContents()) {
@@ -281,7 +304,7 @@ public class RhittaManager {
             return;
         }
 
-        // Do not create another Rhitta
+        // Do not create another Rhitta.
         if (hasRhitta(player)) {
             return;
         }
@@ -334,15 +357,6 @@ public class RhittaManager {
         // --------------------------------------------------------
 
         if (!leftover.isEmpty()) {
-
-            /*
-             * IMPORTANT:
-             *
-             * Never drop Rhitta on the ground.
-             *
-             * If the inventory is full, wait until the
-             * inventory has an available slot and give it.
-             */
 
             player.sendMessage(
                     ChatColor.YELLOW +
@@ -703,6 +717,7 @@ public class RhittaManager {
     // ============================================================
     // ABILITY SLOTS
     // ============================================================
+
     /*
      * Slot 1 = Fireball
      * Slot 2 = King's Aura
