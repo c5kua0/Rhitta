@@ -43,7 +43,7 @@ public class RhittaListener implements Listener {
     private final RhittaManager manager;
 
     // ============================================================
-    // COMBAT SETTINGS
+    // COMBAT
     // ============================================================
 
     private static final double PHYSICAL_ATTACK = 20.0;
@@ -81,9 +81,17 @@ public class RhittaListener implements Listener {
     private static final double KA_RADIUS = 8.0;
     private static final double KAU_RADIUS = 12.0;
 
-    // Pride's Judgment / Energy Blast
+    // ============================================================
+    // PRIDE'S JUDGMENT
+    //
+    // Range = 25 blocks
+    // Thickness = 1.5 blocks
+    // Beam length segment = 3 blocks
+    // ============================================================
+
     private static final double PJ_RANGE = 25.0;
     private static final double PJ_THICKNESS = 1.5;
+    private static final double PJ_SEGMENT_LENGTH = 3.0;
 
     private static final double PP_RANGE = 8.0;
 
@@ -142,7 +150,7 @@ public class RhittaListener implements Listener {
     }
 
     // ============================================================
-    // NORMAL RHITTA COMBAT
+    // NORMAL RHITTA ATTACK
     // ============================================================
 
     @EventHandler(priority = EventPriority.HIGH)
@@ -167,12 +175,10 @@ public class RhittaListener implements Listener {
             return;
         }
 
-        // Physical attack
         event.setDamage(
                 event.getDamage() + PHYSICAL_ATTACK
         );
 
-        // Life steal
         double newHealth =
                 Math.min(
                         player.getHealth() + LIFE_STEAL,
@@ -181,17 +187,14 @@ public class RhittaListener implements Listener {
 
         player.setHealth(newHealth);
 
-        // Defense growth
         manager.addDefense(
                 player,
                 DEFENSE_PER_HIT
         );
 
-        // Critical particles
         player.getWorld().spawnParticle(
                 Particle.CRIT,
-                player.getLocation()
-                        .add(0, 1, 0),
+                player.getLocation().add(0, 1, 0),
                 8,
                 0.3,
                 0.4,
@@ -201,7 +204,19 @@ public class RhittaListener implements Listener {
     }
 
     // ============================================================
-    // SKILL USE
+    // RHITTA SKILL RIGHT CLICK
+    //
+    // IMPORTANT:
+    // Only Rhitta can activate skills.
+    //
+    // This prevents:
+    // Food
+    // Bucket
+    // Water
+    // Other items
+    // Blocks
+    //
+    // from accidentally activating the skill.
     // ============================================================
 
     @EventHandler(priority = EventPriority.HIGHEST)
@@ -211,8 +226,7 @@ public class RhittaListener implements Listener {
             return;
         }
 
-        Player player =
-                event.getPlayer();
+        Player player = event.getPlayer();
 
         if (!manager.isOwner(player)) {
             return;
@@ -222,13 +236,24 @@ public class RhittaListener implements Listener {
             return;
         }
 
+        // ========================================================
+        // RHITTA CHECK
+        // ========================================================
+
+        ItemStack item =
+                player.getInventory()
+                        .getItemInMainHand();
+
+        if (!manager.isRhitta(item)) {
+            return;
+        }
+
         Action action =
                 event.getAction();
 
-        // Allow normal block interactions
-        if (action == Action.RIGHT_CLICK_BLOCK) {
-            return;
-        }
+        // ========================================================
+        // ONLY RIGHT CLICK AIR
+        // ========================================================
 
         if (action != Action.RIGHT_CLICK_AIR) {
             return;
@@ -300,6 +325,7 @@ public class RhittaListener implements Listener {
                         ChatColor.RED +
                         "Unknown Rhitta skill."
                 );
+
                 break;
         }
     }
@@ -439,8 +465,7 @@ public class RhittaListener implements Listener {
 
             target.getWorld().spawnParticle(
                     Particle.FLAME,
-                    target.getLocation()
-                            .add(0, 1, 0),
+                    target.getLocation().add(0, 1, 0),
                     30,
                     0.4,
                     0.5,
@@ -556,7 +581,7 @@ public class RhittaListener implements Listener {
 
         player.sendMessage(
                 ChatColor.GRAY +
-                String.valueOf(affected) +
+                affected +
                 " enemies affected."
         );
     }
@@ -759,16 +784,17 @@ public class RhittaListener implements Listener {
 
         player.sendMessage(
                 ChatColor.GRAY +
-                String.valueOf(hit) +
+                hit +
                 " enemy/enemies hit by the dash."
         );
     }
 
     // ============================================================
     // PRIDE'S JUDGMENT
-    // 25-BLOCK ENERGY BLAST
-    // 1.5-BLOCK THICK
-    // BLACK + RED
+    //
+    // 25 BLOCK RANGE
+    // 1.5 BLOCK THICKNESS
+    // 3 BLOCK VISUAL SEGMENTS
     // ============================================================
 
     private void activatePridesJudgment(
@@ -799,16 +825,11 @@ public class RhittaListener implements Listener {
                 start.getDirection()
                         .normalize();
 
-        // ========================================================
-        // TARGETS ALREADY HIT
-        // Prevents multiple damage from the same blast.
-        // ========================================================
-
         Set<UUID> alreadyHit =
                 new HashSet<>();
 
         // ========================================================
-        // ENERGY BLAST
+        // BEAM
         // ========================================================
 
         for (double distance = 0.8;
@@ -841,7 +862,7 @@ public class RhittaListener implements Listener {
             );
 
             // ====================================================
-            // BLACK OUTER ENERGY
+            // BLACK OUTER
             // ====================================================
 
             player.getWorld().spawnParticle(
@@ -857,10 +878,6 @@ public class RhittaListener implements Listener {
                             3.0f
                     )
             );
-
-            // ====================================================
-            // FLASHY PARTICLES
-            // ====================================================
 
             player.getWorld().spawnParticle(
                     Particle.CRIT,
@@ -897,9 +914,16 @@ public class RhittaListener implements Listener {
                     continue;
                 }
 
-                if (entity.getLocation()
-                        .distance(point)
-                        > PJ_THICKNESS) {
+                Location entityLocation =
+                        entity.getLocation()
+                                .add(0, 1, 0);
+
+                if (distanceFromLine(
+                        entityLocation,
+                        start,
+                        direction,
+                        PJ_RANGE
+                ) > PJ_THICKNESS) {
 
                     continue;
                 }
@@ -914,10 +938,6 @@ public class RhittaListener implements Listener {
                 alreadyHit.add(
                         entity.getUniqueId()
                 );
-
-                // =================================================
-                // RED HIT EFFECT
-                // =================================================
 
                 Location hitLocation =
                         entity.getLocation()
@@ -937,10 +957,6 @@ public class RhittaListener implements Listener {
                         )
                 );
 
-                // =================================================
-                // BLACK HIT EFFECT
-                // =================================================
-
                 entity.getWorld().spawnParticle(
                         Particle.DUST,
                         hitLocation,
@@ -955,10 +971,6 @@ public class RhittaListener implements Listener {
                         )
                 );
 
-                // =================================================
-                // CRIT BURST
-                // =================================================
-
                 entity.getWorld().spawnParticle(
                         Particle.CRIT,
                         hitLocation,
@@ -972,7 +984,47 @@ public class RhittaListener implements Listener {
         }
 
         // ========================================================
-        // LARGE STARTING FLASH
+        // 3-BLOCK FLASH
+        // ========================================================
+
+        Vector flashDirection =
+                direction.clone()
+                        .multiply(PJ_SEGMENT_LENGTH);
+
+        Location flashEnd =
+                start.clone()
+                        .add(flashDirection);
+
+        player.getWorld().spawnParticle(
+                Particle.DUST,
+                flashEnd,
+                35,
+                1.0,
+                1.0,
+                1.0,
+                0,
+                new Particle.DustOptions(
+                        Color.RED,
+                        3.5f
+                )
+        );
+
+        player.getWorld().spawnParticle(
+                Particle.DUST,
+                flashEnd,
+                30,
+                1.0,
+                1.0,
+                1.0,
+                0,
+                new Particle.DustOptions(
+                        Color.BLACK,
+                        4.0f
+                )
+        );
+
+        // ========================================================
+        // START FLASH
         // ========================================================
 
         player.getWorld().spawnParticle(
@@ -1031,10 +1083,6 @@ public class RhittaListener implements Listener {
                 0.8f
         );
 
-        // ========================================================
-        // MESSAGE
-        // ========================================================
-
         sendActivated(
                 player,
                 "⚖ PRIDE'S JUDGMENT"
@@ -1042,9 +1090,41 @@ public class RhittaListener implements Listener {
 
         player.sendMessage(
                 ChatColor.GRAY +
-                String.valueOf(alreadyHit.size()) +
+                alreadyHit.size() +
                 " enemy/enemies judged."
         );
+    }
+
+    // ============================================================
+    // DISTANCE FROM BEAM LINE
+    // ============================================================
+
+    private double distanceFromLine(
+            Location point,
+            Location start,
+            Vector direction,
+            double maxRange) {
+
+        Vector relative =
+                point.toVector()
+                        .subtract(start.toVector());
+
+        double projection =
+                relative.dot(direction);
+
+        if (projection < 0 ||
+                projection > maxRange) {
+
+            return Double.MAX_VALUE;
+        }
+
+        Vector closest =
+                direction.clone()
+                        .multiply(projection);
+
+        return relative
+                .subtract(closest)
+                .length();
     }
 
     // ============================================================
@@ -1140,7 +1220,7 @@ public class RhittaListener implements Listener {
 
         player.sendMessage(
                 ChatColor.GRAY +
-                String.valueOf(affected) +
+                affected +
                 " enemy/enemies overwhelmed."
         );
     }
@@ -1270,7 +1350,7 @@ public class RhittaListener implements Listener {
 
         player.sendMessage(
                 ChatColor.YELLOW +
-                String.valueOf(affected) +
+                affected +
                 " enemies overwhelmed."
         );
     }
@@ -1294,7 +1374,6 @@ public class RhittaListener implements Listener {
                 continue;
             }
 
-            // Don't damage players
             if (entity instanceof Player) {
                 continue;
             }
@@ -1549,7 +1628,6 @@ public class RhittaListener implements Listener {
             return;
         }
 
-        // Prevent duplicate Rhitta
         if (manager.hasRhitta(player)) {
 
             event.setCancelled(true);
@@ -1571,7 +1649,6 @@ public class RhittaListener implements Listener {
                         .getItemStack();
 
         if (manager.isRhitta(item)) {
-
             event.setCancelled(true);
         }
     }
