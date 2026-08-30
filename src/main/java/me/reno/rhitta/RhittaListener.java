@@ -83,10 +83,6 @@ public class RhittaListener implements Listener {
 
     // ============================================================
     // PRIDE'S JUDGMENT
-    //
-    // Range = 25 blocks
-    // Thickness = 1.5 blocks
-    // Beam length segment = 3 blocks
     // ============================================================
 
     private static final double PJ_RANGE = 25.0;
@@ -205,18 +201,6 @@ public class RhittaListener implements Listener {
 
     // ============================================================
     // RHITTA SKILL RIGHT CLICK
-    //
-    // IMPORTANT:
-    // Only Rhitta can activate skills.
-    //
-    // This prevents:
-    // Food
-    // Bucket
-    // Water
-    // Other items
-    // Blocks
-    //
-    // from accidentally activating the skill.
     // ============================================================
 
     @EventHandler(priority = EventPriority.HIGHEST)
@@ -236,10 +220,6 @@ public class RhittaListener implements Listener {
             return;
         }
 
-        // ========================================================
-        // RHITTA CHECK
-        // ========================================================
-
         ItemStack item =
                 player.getInventory()
                         .getItemInMainHand();
@@ -250,10 +230,6 @@ public class RhittaListener implements Listener {
 
         Action action =
                 event.getAction();
-
-        // ========================================================
-        // ONLY RIGHT CLICK AIR
-        // ========================================================
 
         if (action != Action.RIGHT_CLICK_AIR) {
             return;
@@ -325,7 +301,6 @@ public class RhittaListener implements Listener {
                         ChatColor.RED +
                         "Unknown Rhitta skill."
                 );
-
                 break;
         }
     }
@@ -581,7 +556,7 @@ public class RhittaListener implements Listener {
 
         player.sendMessage(
                 ChatColor.GRAY +
-                affected +
+                String.valueOf(affected) +
                 " enemies affected."
         );
     }
@@ -784,17 +759,13 @@ public class RhittaListener implements Listener {
 
         player.sendMessage(
                 ChatColor.GRAY +
-                hit +
+                String.valueOf(hit) +
                 " enemy/enemies hit by the dash."
         );
     }
 
     // ============================================================
     // PRIDE'S JUDGMENT
-    //
-    // 25 BLOCK RANGE
-    // 1.5 BLOCK THICKNESS
-    // 3 BLOCK VISUAL SEGMENTS
     // ============================================================
 
     private void activatePridesJudgment(
@@ -843,10 +814,7 @@ public class RhittaListener implements Listener {
                                             .multiply(distance)
                             );
 
-            // ====================================================
             // RED CORE
-            // ====================================================
-
             player.getWorld().spawnParticle(
                     Particle.DUST,
                     point,
@@ -861,10 +829,7 @@ public class RhittaListener implements Listener {
                     )
             );
 
-            // ====================================================
             // BLACK OUTER
-            // ====================================================
-
             player.getWorld().spawnParticle(
                     Particle.DUST,
                     point,
@@ -899,10 +864,7 @@ public class RhittaListener implements Listener {
                     0.08
             );
 
-            // ====================================================
             // DAMAGE
-            // ====================================================
-
             for (LivingEntity entity :
                     getNearbyEnemies(
                             player,
@@ -983,10 +945,7 @@ public class RhittaListener implements Listener {
             }
         }
 
-        // ========================================================
         // 3-BLOCK FLASH
-        // ========================================================
-
         Vector flashDirection =
                 direction.clone()
                         .multiply(PJ_SEGMENT_LENGTH);
@@ -1023,10 +982,7 @@ public class RhittaListener implements Listener {
                 )
         );
 
-        // ========================================================
         // START FLASH
-        // ========================================================
-
         player.getWorld().spawnParticle(
                 Particle.DUST,
                 start,
@@ -1065,10 +1021,7 @@ public class RhittaListener implements Listener {
                 0.15
         );
 
-        // ========================================================
         // SOUND
-        // ========================================================
-
         player.getWorld().playSound(
                 player.getLocation(),
                 Sound.ENTITY_EVOKER_CAST_SPELL,
@@ -1090,7 +1043,7 @@ public class RhittaListener implements Listener {
 
         player.sendMessage(
                 ChatColor.GRAY +
-                alreadyHit.size() +
+                String.valueOf(alreadyHit.size()) +
                 " enemy/enemies judged."
         );
     }
@@ -1220,7 +1173,7 @@ public class RhittaListener implements Listener {
 
         player.sendMessage(
                 ChatColor.GRAY +
-                affected +
+                String.valueOf(affected) +
                 " enemy/enemies overwhelmed."
         );
     }
@@ -1350,7 +1303,7 @@ public class RhittaListener implements Listener {
 
         player.sendMessage(
                 ChatColor.YELLOW +
-                affected +
+                String.valueOf(affected) +
                 " enemies overwhelmed."
         );
     }
