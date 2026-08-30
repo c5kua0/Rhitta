@@ -33,11 +33,17 @@ public class RhittaCommand implements CommandExecutor, TabCompleter {
             String label,
             String[] args) {
 
+        // --------------------------------------------------------
+        // PLAYER ONLY
+        // --------------------------------------------------------
+
         if (!(sender instanceof Player)) {
+
             sender.sendMessage(
                     ChatColor.RED +
                     "This command can only be used by a player."
             );
+
             return true;
         }
 
@@ -48,10 +54,12 @@ public class RhittaCommand implements CommandExecutor, TabCompleter {
         // --------------------------------------------------------
 
         if (!manager.isOwner(player)) {
+
             player.sendMessage(
                     ChatColor.RED +
                     "Only the Rhitta owner can use this command."
             );
+
             return true;
         }
 
@@ -66,18 +74,19 @@ public class RhittaCommand implements CommandExecutor, TabCompleter {
 
         String sub = args[0].toLowerCase();
 
-        // --------------------------------------------------------
+        // ========================================================
         // HELP
-        // --------------------------------------------------------
+        // ========================================================
 
         if (sub.equals("help")) {
+
             sendHelp(player);
             return true;
         }
 
-        // --------------------------------------------------------
+        // ========================================================
         // ABILITY LIST
-        // --------------------------------------------------------
+        // ========================================================
 
         if (sub.equals("ability")
                 && args.length >= 2
@@ -87,10 +96,6 @@ public class RhittaCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        // Also allow:
-        // /rhitta abilities
-        // /rhitta abilitylist
-
         if (sub.equals("abilities")
                 || sub.equals("abilitylist")) {
 
@@ -98,21 +103,22 @@ public class RhittaCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        // --------------------------------------------------------
+        // ========================================================
         // STATUS
-        // --------------------------------------------------------
+        // ========================================================
 
         if (sub.equals("status")) {
+
             sendStatus(player);
             return true;
         }
 
-        // --------------------------------------------------------
+        // ========================================================
         // SKILLS TRUE/FALSE
         //
         // /rhitta skills true
         // /rhitta skills false
-        // --------------------------------------------------------
+        // ========================================================
 
         if (sub.equals("skills")) {
 
@@ -120,10 +126,12 @@ public class RhittaCommand implements CommandExecutor, TabCompleter {
 
                 player.sendMessage(
                         ChatColor.YELLOW +
-                        "Skills are currently " +
-                        (manager.isBuffsEnabled()
-                                ? ChatColor.GREEN + "ENABLED"
-                                : ChatColor.RED + "DISABLED")
+                        "Rhitta skills are " +
+                        (
+                                manager.isSkillsEnabled()
+                                        ? ChatColor.GREEN + "ENABLED"
+                                        : ChatColor.RED + "DISABLED"
+                        )
                 );
 
                 player.sendMessage(
@@ -134,11 +142,12 @@ public class RhittaCommand implements CommandExecutor, TabCompleter {
                 return true;
             }
 
+            // ENABLE
             if (args[1].equalsIgnoreCase("true")
                     || args[1].equalsIgnoreCase("on")
                     || args[1].equalsIgnoreCase("enable")) {
 
-                manager.setBuffsEnabled(true);
+                manager.setSkillsEnabled(true);
 
                 player.sendMessage(
                         ChatColor.GREEN +
@@ -153,11 +162,12 @@ public class RhittaCommand implements CommandExecutor, TabCompleter {
                 return true;
             }
 
+            // DISABLE
             if (args[1].equalsIgnoreCase("false")
                     || args[1].equalsIgnoreCase("off")
                     || args[1].equalsIgnoreCase("disable")) {
 
-                manager.setBuffsEnabled(false);
+                manager.setSkillsEnabled(false);
 
                 player.sendMessage(
                         ChatColor.RED +
@@ -180,11 +190,13 @@ public class RhittaCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        // --------------------------------------------------------
+        // ========================================================
         // BUFFS TRUE/FALSE
         //
-        // Compatibility with the older command.
-        // --------------------------------------------------------
+        // Compatibility with old command.
+        //
+        // This controls the same hotbar skill system.
+        // ========================================================
 
         if (sub.equals("buffs")) {
 
@@ -193,9 +205,11 @@ public class RhittaCommand implements CommandExecutor, TabCompleter {
                 player.sendMessage(
                         ChatColor.YELLOW +
                         "Rhitta skills are " +
-                        (manager.isBuffsEnabled()
-                                ? ChatColor.GREEN + "ENABLED"
-                                : ChatColor.RED + "DISABLED")
+                        (
+                                manager.isSkillsEnabled()
+                                        ? ChatColor.GREEN + "ENABLED"
+                                        : ChatColor.RED + "DISABLED"
+                        )
                 );
 
                 player.sendMessage(
@@ -206,10 +220,12 @@ public class RhittaCommand implements CommandExecutor, TabCompleter {
                 return true;
             }
 
+            // ENABLE
             if (args[1].equalsIgnoreCase("true")
-                    || args[1].equalsIgnoreCase("on")) {
+                    || args[1].equalsIgnoreCase("on")
+                    || args[1].equalsIgnoreCase("enable")) {
 
-                manager.setBuffsEnabled(true);
+                manager.setSkillsEnabled(true);
 
                 player.sendMessage(
                         ChatColor.GREEN +
@@ -219,10 +235,12 @@ public class RhittaCommand implements CommandExecutor, TabCompleter {
                 return true;
             }
 
+            // DISABLE
             if (args[1].equalsIgnoreCase("false")
-                    || args[1].equalsIgnoreCase("off")) {
+                    || args[1].equalsIgnoreCase("off")
+                    || args[1].equalsIgnoreCase("disable")) {
 
-                manager.setBuffsEnabled(false);
+                manager.setSkillsEnabled(false);
 
                 player.sendMessage(
                         ChatColor.RED +
@@ -240,9 +258,9 @@ public class RhittaCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        // --------------------------------------------------------
-        // FIREBALL / ABILITY SHORTCUTS
-        // --------------------------------------------------------
+        // ========================================================
+        // FIREBALL SHORTCUT
+        // ========================================================
 
         if (sub.equals("0")) {
 
@@ -260,6 +278,10 @@ public class RhittaCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
+        // ========================================================
+        // ABSOLUTE DOMINANCE
+        // ========================================================
+
         if (sub.equals("ad")) {
 
             player.sendMessage(
@@ -267,8 +289,17 @@ public class RhittaCommand implements CommandExecutor, TabCompleter {
                     "Absolute Dominance is assigned to hotbar slot 6."
             );
 
+            player.sendMessage(
+                    ChatColor.GRAY +
+                    "Select slot 6 and Right Click."
+            );
+
             return true;
         }
+
+        // ========================================================
+        // KING'S AURA
+        // ========================================================
 
         if (sub.equals("ka")) {
 
@@ -277,8 +308,17 @@ public class RhittaCommand implements CommandExecutor, TabCompleter {
                     "King's Aura is assigned to hotbar slot 2."
             );
 
+            player.sendMessage(
+                    ChatColor.GRAY +
+                    "Select slot 2 and Right Click."
+            );
+
             return true;
         }
+
+        // ========================================================
+        // UNBREAKABLE EGO
+        // ========================================================
 
         if (sub.equals("ue")) {
 
@@ -287,8 +327,17 @@ public class RhittaCommand implements CommandExecutor, TabCompleter {
                     "Unbreakable Ego is assigned to hotbar slot 3."
             );
 
+            player.sendMessage(
+                    ChatColor.GRAY +
+                    "Select slot 3 and Right Click."
+            );
+
             return true;
         }
+
+        // ========================================================
+        // PUNISHMENT OF THE PROUD
+        // ========================================================
 
         if (sub.equals("pp")) {
 
@@ -297,8 +346,17 @@ public class RhittaCommand implements CommandExecutor, TabCompleter {
                     "Punishment of the Proud is assigned to hotbar slot 4."
             );
 
+            player.sendMessage(
+                    ChatColor.GRAY +
+                    "Select slot 4 and Right Click."
+            );
+
             return true;
         }
+
+        // ========================================================
+        // PRIDE'S JUDGMENT
+        // ========================================================
 
         if (sub.equals("pj")) {
 
@@ -307,8 +365,17 @@ public class RhittaCommand implements CommandExecutor, TabCompleter {
                     "Pride's Judgment is assigned to hotbar slot 5."
             );
 
+            player.sendMessage(
+                    ChatColor.GRAY +
+                    "Select slot 5 and Right Click."
+            );
+
             return true;
         }
+
+        // ========================================================
+        // KING'S AUTHORITY
+        // ========================================================
 
         if (sub.equals("kau")) {
 
@@ -317,35 +384,55 @@ public class RhittaCommand implements CommandExecutor, TabCompleter {
                     "King's Authority Ultimate is assigned to hotbar slot 7."
             );
 
+            player.sendMessage(
+                    ChatColor.GRAY +
+                    "Select slot 7 and Right Click."
+            );
+
             return true;
         }
 
-        // --------------------------------------------------------
+        // ========================================================
         // REMOVE
-        // --------------------------------------------------------
+        // ========================================================
 
         if (sub.equals("remove")) {
+
+            // ----------------------------------------------------
+            // REMOVE DUPLICATES
+            // ----------------------------------------------------
 
             if (args.length >= 2
                     && args[1].equalsIgnoreCase("dupes")) {
 
-                /*
-                 * The manager is responsible for maintaining
-                 * the unique Rhitta item.
-                 *
-                 * forceOneRhitta() guarantees the owner has
-                 * exactly one valid Rhitta.
-                 */
+                player.sendMessage(
+                        ChatColor.YELLOW +
+                        "Scanning the server for duplicate Rhitta items..."
+                );
 
-                manager.forceOneRhitta(player);
+                int removed =
+                        manager.removeDuplicates();
 
                 player.sendMessage(
                         ChatColor.GREEN +
-                        "Rhitta duplicate check completed."
+                        "Rhitta duplicate cleanup complete."
+                );
+
+                player.sendMessage(
+                        ChatColor.GRAY +
+                        "Removed: "
+                        + ChatColor.RED
+                        + removed
+                        + ChatColor.GRAY
+                        + " duplicate Rhitta item(s)."
                 );
 
                 return true;
             }
+
+            // ----------------------------------------------------
+            // REMOVE RHITTA
+            // ----------------------------------------------------
 
             if (args.length >= 2
                     && args[1].equalsIgnoreCase("rhitta")) {
@@ -371,9 +458,9 @@ public class RhittaCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        // --------------------------------------------------------
+        // ========================================================
         // UNKNOWN COMMAND
-        // --------------------------------------------------------
+        // ========================================================
 
         player.sendMessage(
                 ChatColor.RED +
@@ -406,7 +493,7 @@ public class RhittaCommand implements CommandExecutor, TabCompleter {
 
         player.sendMessage(
                 ChatColor.GRAY +
-                "             Ability System"
+                "          Ability System"
         );
 
         player.sendMessage(
@@ -425,28 +512,28 @@ public class RhittaCommand implements CommandExecutor, TabCompleter {
                 ChatColor.YELLOW +
                 "/rhitta status"
                 + ChatColor.GRAY +
-                " - Check your Rhitta status"
+                " - Check Rhitta status"
         );
 
         player.sendMessage(
                 ChatColor.YELLOW +
                 "/rhitta skills true"
                 + ChatColor.GRAY +
-                " - Enable hotbar skills"
+                " - Enable skills"
         );
 
         player.sendMessage(
                 ChatColor.YELLOW +
                 "/rhitta skills false"
                 + ChatColor.GRAY +
-                " - Disable hotbar skills"
+                " - Disable skills"
         );
 
         player.sendMessage(
                 ChatColor.YELLOW +
                 "/rhitta remove dupes"
                 + ChatColor.GRAY +
-                " - Fix duplicate Rhitta items"
+                " - Remove duplicate Rhittas"
         );
 
         player.sendMessage(
@@ -582,10 +669,13 @@ public class RhittaCommand implements CommandExecutor, TabCompleter {
                 manager.hasRhitta(player);
 
         boolean skillsEnabled =
-                manager.isBuffsEnabled();
+                manager.isSkillsEnabled();
 
         int defense =
                 manager.getDefense(player);
+
+        int rhittaCount =
+                manager.countRhitta(player);
 
         player.sendMessage(
                 ChatColor.DARK_PURPLE +
@@ -612,17 +702,28 @@ public class RhittaCommand implements CommandExecutor, TabCompleter {
         player.sendMessage(
                 ChatColor.GRAY +
                 "Rhitta: "
-                + (hasRhitta
-                ? ChatColor.GREEN + "YES"
-                : ChatColor.RED + "NO")
+                + (
+                        hasRhitta
+                                ? ChatColor.GREEN + "YES"
+                                : ChatColor.RED + "NO"
+                )
+        );
+
+        player.sendMessage(
+                ChatColor.GRAY +
+                "Rhitta Count: "
+                + ChatColor.AQUA
+                + rhittaCount
         );
 
         player.sendMessage(
                 ChatColor.GRAY +
                 "Hotbar Skills: "
-                + (skillsEnabled
-                ? ChatColor.GREEN + "ENABLED"
-                : ChatColor.RED + "DISABLED")
+                + (
+                        skillsEnabled
+                                ? ChatColor.GREEN + "ENABLED"
+                                : ChatColor.RED + "DISABLED"
+                )
         );
 
         player.sendMessage(
@@ -669,6 +770,10 @@ public class RhittaCommand implements CommandExecutor, TabCompleter {
             return Collections.emptyList();
         }
 
+        // --------------------------------------------------------
+        // FIRST ARGUMENT
+        // --------------------------------------------------------
+
         if (args.length == 1) {
 
             List<String> suggestions =
@@ -695,6 +800,10 @@ public class RhittaCommand implements CommandExecutor, TabCompleter {
                     args[0]
             );
         }
+
+        // --------------------------------------------------------
+        // SECOND ARGUMENT
+        // --------------------------------------------------------
 
         if (args.length == 2) {
 
