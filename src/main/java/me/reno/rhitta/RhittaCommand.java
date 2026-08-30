@@ -114,7 +114,7 @@ public class RhittaCommand implements CommandExecutor, TabCompleter {
         }
 
         // ========================================================
-        // SKILLS TRUE/FALSE
+        // SKILLS TRUE / FALSE
         //
         // /rhitta skills true
         // /rhitta skills false
@@ -126,7 +126,8 @@ public class RhittaCommand implements CommandExecutor, TabCompleter {
 
                 player.sendMessage(
                         ChatColor.YELLOW +
-                        "Rhitta skills are " +
+                        "Rhitta skills are "
+                        +
                         (
                                 manager.isSkillsEnabled()
                                         ? ChatColor.GREEN + "ENABLED"
@@ -142,7 +143,10 @@ public class RhittaCommand implements CommandExecutor, TabCompleter {
                 return true;
             }
 
+            // ----------------------------------------------------
             // ENABLE
+            // ----------------------------------------------------
+
             if (args[1].equalsIgnoreCase("true")
                     || args[1].equalsIgnoreCase("on")
                     || args[1].equalsIgnoreCase("enable")) {
@@ -151,18 +155,26 @@ public class RhittaCommand implements CommandExecutor, TabCompleter {
 
                 player.sendMessage(
                         ChatColor.GREEN +
-                        "Rhitta hotbar skills ENABLED."
+                        "Rhitta skills ENABLED."
                 );
 
                 player.sendMessage(
                         ChatColor.GRAY +
-                        "Select hotbar slot 1-7 and Right Click."
+                        "Skills are automatically available on hotbar slots 1-7."
+                );
+
+                player.sendMessage(
+                        ChatColor.GRAY +
+                        "Hold Rhitta and Right Click to activate."
                 );
 
                 return true;
             }
 
+            // ----------------------------------------------------
             // DISABLE
+            // ----------------------------------------------------
+
             if (args[1].equalsIgnoreCase("false")
                     || args[1].equalsIgnoreCase("off")
                     || args[1].equalsIgnoreCase("disable")) {
@@ -171,7 +183,7 @@ public class RhittaCommand implements CommandExecutor, TabCompleter {
 
                 player.sendMessage(
                         ChatColor.RED +
-                        "Rhitta hotbar skills DISABLED."
+                        "Rhitta skills DISABLED."
                 );
 
                 return true;
@@ -179,7 +191,7 @@ public class RhittaCommand implements CommandExecutor, TabCompleter {
 
             player.sendMessage(
                     ChatColor.RED +
-                    "Use: /rhitta skills true"
+                    "Usage: /rhitta skills true"
             );
 
             player.sendMessage(
@@ -191,11 +203,10 @@ public class RhittaCommand implements CommandExecutor, TabCompleter {
         }
 
         // ========================================================
-        // BUFFS TRUE/FALSE
+        // BUFFS
         //
-        // Compatibility with old command.
-        //
-        // This controls the same hotbar skill system.
+        // Kept for compatibility.
+        // It controls the same skill system.
         // ========================================================
 
         if (sub.equals("buffs")) {
@@ -204,7 +215,8 @@ public class RhittaCommand implements CommandExecutor, TabCompleter {
 
                 player.sendMessage(
                         ChatColor.YELLOW +
-                        "Rhitta skills are " +
+                        "Rhitta skills are "
+                        +
                         (
                                 manager.isSkillsEnabled()
                                         ? ChatColor.GREEN + "ENABLED"
@@ -220,7 +232,10 @@ public class RhittaCommand implements CommandExecutor, TabCompleter {
                 return true;
             }
 
+            // ----------------------------------------------------
             // ENABLE
+            // ----------------------------------------------------
+
             if (args[1].equalsIgnoreCase("true")
                     || args[1].equalsIgnoreCase("on")
                     || args[1].equalsIgnoreCase("enable")) {
@@ -235,7 +250,10 @@ public class RhittaCommand implements CommandExecutor, TabCompleter {
                 return true;
             }
 
+            // ----------------------------------------------------
             // DISABLE
+            // ----------------------------------------------------
+
             if (args[1].equalsIgnoreCase("false")
                     || args[1].equalsIgnoreCase("off")
                     || args[1].equalsIgnoreCase("disable")) {
@@ -253,140 +271,6 @@ public class RhittaCommand implements CommandExecutor, TabCompleter {
             player.sendMessage(
                     ChatColor.RED +
                     "Usage: /rhitta buffs <true|false>"
-            );
-
-            return true;
-        }
-
-        // ========================================================
-        // FIREBALL SHORTCUT
-        // ========================================================
-
-        if (sub.equals("0")) {
-
-            player.sendMessage(
-                    ChatColor.GOLD +
-                    "Fireball is assigned to hotbar slot 1."
-            );
-
-            player.sendMessage(
-                    ChatColor.GRAY +
-                    "Hold Rhitta in your main hand, select slot 1, "
-                    + "then Right Click."
-            );
-
-            return true;
-        }
-
-        // ========================================================
-        // ABSOLUTE DOMINANCE
-        // ========================================================
-
-        if (sub.equals("ad")) {
-
-            player.sendMessage(
-                    ChatColor.RED +
-                    "Absolute Dominance is assigned to hotbar slot 6."
-            );
-
-            player.sendMessage(
-                    ChatColor.GRAY +
-                    "Select slot 6 and Right Click."
-            );
-
-            return true;
-        }
-
-        // ========================================================
-        // KING'S AURA
-        // ========================================================
-
-        if (sub.equals("ka")) {
-
-            player.sendMessage(
-                    ChatColor.GOLD +
-                    "King's Aura is assigned to hotbar slot 2."
-            );
-
-            player.sendMessage(
-                    ChatColor.GRAY +
-                    "Select slot 2 and Right Click."
-            );
-
-            return true;
-        }
-
-        // ========================================================
-        // UNBREAKABLE EGO
-        // ========================================================
-
-        if (sub.equals("ue")) {
-
-            player.sendMessage(
-                    ChatColor.BLUE +
-                    "Unbreakable Ego is assigned to hotbar slot 3."
-            );
-
-            player.sendMessage(
-                    ChatColor.GRAY +
-                    "Select slot 3 and Right Click."
-            );
-
-            return true;
-        }
-
-        // ========================================================
-        // PUNISHMENT OF THE PROUD
-        // ========================================================
-
-        if (sub.equals("pp")) {
-
-            player.sendMessage(
-                    ChatColor.RED +
-                    "Punishment of the Proud is assigned to hotbar slot 4."
-            );
-
-            player.sendMessage(
-                    ChatColor.GRAY +
-                    "Select slot 4 and Right Click."
-            );
-
-            return true;
-        }
-
-        // ========================================================
-        // PRIDE'S JUDGMENT
-        // ========================================================
-
-        if (sub.equals("pj")) {
-
-            player.sendMessage(
-                    ChatColor.DARK_PURPLE +
-                    "Pride's Judgment is assigned to hotbar slot 5."
-            );
-
-            player.sendMessage(
-                    ChatColor.GRAY +
-                    "Select slot 5 and Right Click."
-            );
-
-            return true;
-        }
-
-        // ========================================================
-        // KING'S AUTHORITY
-        // ========================================================
-
-        if (sub.equals("kau")) {
-
-            player.sendMessage(
-                    ChatColor.YELLOW +
-                    "King's Authority Ultimate is assigned to hotbar slot 7."
-            );
-
-            player.sendMessage(
-                    ChatColor.GRAY +
-                    "Select slot 7 and Right Click."
             );
 
             return true;
@@ -424,31 +308,15 @@ public class RhittaCommand implements CommandExecutor, TabCompleter {
                         + ChatColor.RED
                         + removed
                         + ChatColor.GRAY
-                        + " duplicate Rhitta item(s)."
+                        + " Rhitta item(s)."
                 );
 
                 return true;
             }
 
             // ----------------------------------------------------
-            // REMOVE RHITTA
+            // INVALID REMOVE COMMAND
             // ----------------------------------------------------
-
-            if (args.length >= 2
-                    && args[1].equalsIgnoreCase("rhitta")) {
-
-                player.sendMessage(
-                        ChatColor.YELLOW +
-                        "Rhitta is permanently bound to its owner."
-                );
-
-                player.sendMessage(
-                        ChatColor.GRAY +
-                        "Use /rhitta remove dupes instead."
-                );
-
-                return true;
-            }
 
             player.sendMessage(
                     ChatColor.RED +
@@ -555,11 +423,70 @@ public class RhittaCommand implements CommandExecutor, TabCompleter {
 
         player.sendMessage(
                 ChatColor.GRAY +
-                "Select slot 1-7, then "
-                + ChatColor.YELLOW +
+                "Slot "
+                + ChatColor.YELLOW + "1"
+                + ChatColor.GRAY +
+                " → Fireball"
+        );
+
+        player.sendMessage(
+                ChatColor.GRAY +
+                "Slot "
+                + ChatColor.YELLOW + "2"
+                + ChatColor.GRAY +
+                " → King's Aura"
+        );
+
+        player.sendMessage(
+                ChatColor.GRAY +
+                "Slot "
+                + ChatColor.YELLOW + "3"
+                + ChatColor.GRAY +
+                " → Unbreakable Ego"
+        );
+
+        player.sendMessage(
+                ChatColor.GRAY +
+                "Slot "
+                + ChatColor.YELLOW + "4"
+                + ChatColor.GRAY +
+                " → Punishment of the Proud"
+        );
+
+        player.sendMessage(
+                ChatColor.GRAY +
+                "Slot "
+                + ChatColor.YELLOW + "5"
+                + ChatColor.GRAY +
+                " → Pride's Judgment"
+        );
+
+        player.sendMessage(
+                ChatColor.GRAY +
+                "Slot "
+                + ChatColor.YELLOW + "6"
+                + ChatColor.GRAY +
+                " → Absolute Dominance"
+        );
+
+        player.sendMessage(
+                ChatColor.GRAY +
+                "Slot "
+                + ChatColor.YELLOW + "7"
+                + ChatColor.GRAY +
+                " → King's Authority"
+        );
+
+        player.sendMessage(
+                ChatColor.DARK_PURPLE +
+                "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        );
+
+        player.sendMessage(
+                ChatColor.YELLOW +
                 "Right Click"
                 + ChatColor.GRAY +
-                " to activate."
+                " to activate the selected skill."
         );
 
         player.sendMessage(
@@ -602,7 +529,7 @@ public class RhittaCommand implements CommandExecutor, TabCompleter {
         );
 
         player.sendMessage(
-                ChatColor.RED +
+                ChatColor.GOLD +
                 "2. KING'S AURA"
                 + ChatColor.GRAY +
                 " - Strengthens you and weakens enemies"
@@ -626,7 +553,7 @@ public class RhittaCommand implements CommandExecutor, TabCompleter {
                 ChatColor.DARK_PURPLE +
                 "5. PRIDE'S JUDGMENT"
                 + ChatColor.GRAY +
-                " - Divine straight-line attack"
+                " - Powerful straight-line attack"
         );
 
         player.sendMessage(
@@ -650,12 +577,12 @@ public class RhittaCommand implements CommandExecutor, TabCompleter {
 
         player.sendMessage(
                 ChatColor.YELLOW +
-                "Select the corresponding hotbar slot."
+                "Select a hotbar slot."
         );
 
         player.sendMessage(
                 ChatColor.YELLOW +
-                "Then Right Click to activate."
+                "Right Click to activate."
         );
     }
 
@@ -702,7 +629,8 @@ public class RhittaCommand implements CommandExecutor, TabCompleter {
         player.sendMessage(
                 ChatColor.GRAY +
                 "Rhitta: "
-                + (
+                +
+                (
                         hasRhitta
                                 ? ChatColor.GREEN + "YES"
                                 : ChatColor.RED + "NO"
@@ -719,7 +647,8 @@ public class RhittaCommand implements CommandExecutor, TabCompleter {
         player.sendMessage(
                 ChatColor.GRAY +
                 "Hotbar Skills: "
-                + (
+                +
+                (
                         skillsEnabled
                                 ? ChatColor.GREEN + "ENABLED"
                                 : ChatColor.RED + "DISABLED"
@@ -785,14 +714,7 @@ public class RhittaCommand implements CommandExecutor, TabCompleter {
                             "status",
                             "skills",
                             "buffs",
-                            "remove",
-                            "0",
-                            "AD",
-                            "KA",
-                            "UE",
-                            "PP",
-                            "PJ",
-                            "KAU"
+                            "remove"
                     );
 
             return filter(
