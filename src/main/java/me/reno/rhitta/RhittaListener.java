@@ -3,6 +3,7 @@ package me.reno.rhitta;
 import org.bukkit.ChatColor;
 import org.bukkit.Color;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.World;
@@ -27,9 +28,9 @@ import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
+import org.bukkit.util.Vector;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
-import org.bukkit.util.Vector;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -80,10 +81,6 @@ public class RhittaListener implements Listener {
     private static final double AD_RADIUS = 8.0;
     private static final double KA_RADIUS = 8.0;
     private static final double KAU_RADIUS = 12.0;
-
-    // ============================================================
-    // PRIDE'S JUDGMENT
-    // ============================================================
 
     private static final double PJ_RANGE = 25.0;
     private static final double PJ_THICKNESS = 1.5;
@@ -203,9 +200,13 @@ public class RhittaListener implements Listener {
     // RHITTA SKILL RIGHT CLICK
     // ============================================================
 
-    @EventHandler(priority = EventPriority.HIGHEST)
+    @EventHandler(
+            priority = EventPriority.HIGHEST,
+            ignoreCancelled = true
+    )
     public void onSkillUse(PlayerInteractEvent event) {
 
+        // Only main-hand interaction can activate a skill.
         if (event.getHand() != EquipmentSlot.HAND) {
             return;
         }
@@ -220,6 +221,24 @@ public class RhittaListener implements Listener {
             return;
         }
 
+        /*
+         * IMPORTANT:
+         * Skills only activate from RIGHT_CLICK_AIR.
+         *
+         * RIGHT_CLICK_BLOCK is deliberately ignored.
+         * This prevents activation while interacting with:
+         * - chests
+         * - furnaces
+         * - crafting tables
+         * - doors
+         * - buttons
+         * - levers
+         * - other blocks
+         */
+        if (event.getAction() != Action.RIGHT_CLICK_AIR) {
+            return;
+        }
+
         ItemStack item =
                 player.getInventory()
                         .getItemInMainHand();
@@ -228,10 +247,28 @@ public class RhittaListener implements Listener {
             return;
         }
 
-        Action action =
-                event.getAction();
+        /*
+         * Additional protection against an active item-use state.
+         */
+        if (player.isHandRaised()) {
+            return;
+        }
 
-        if (action != Action.RIGHT_CLICK_AIR) {
+        /*
+         * If the player is currently using an edible item,
+         * never activate a skill.
+         *
+         * This is mostly defensive because Rhitta itself must
+         * already be in the main hand for this handler to continue.
+         */
+        ItemStack offHand =
+                player.getInventory()
+                        .getItemInOffHand();
+
+        if (offHand.getType() != Material.AIR
+                && offHand.getType().isEdible()
+                && player.isHandRaised()) {
+
             return;
         }
 
@@ -242,7 +279,7 @@ public class RhittaListener implements Listener {
         String ability =
                 manager.getAbilityForSlot(slot);
 
-        if (ability == null) {
+        if (ability == null || ability.isBlank()) {
             return;
         }
 
@@ -351,7 +388,6 @@ public class RhittaListener implements Listener {
 
         fireball.setShooter(player);
         fireball.setDirection(direction);
-
         fireball.setYield(0F);
         fireball.setIsIncendiary(false);
 
@@ -799,10 +835,6 @@ public class RhittaListener implements Listener {
         Set<UUID> alreadyHit =
                 new HashSet<>();
 
-        // ========================================================
-        // BEAM
-        // ========================================================
-
         for (double distance = 0.8;
              distance <= PJ_RANGE;
              distance += 0.20) {
@@ -814,7 +846,6 @@ public class RhittaListener implements Listener {
                                             .multiply(distance)
                             );
 
-            // RED CORE
             player.getWorld().spawnParticle(
                     Particle.DUST,
                     point,
@@ -829,7 +860,6 @@ public class RhittaListener implements Listener {
                     )
             );
 
-            // BLACK OUTER
             player.getWorld().spawnParticle(
                     Particle.DUST,
                     point,
@@ -864,7 +894,6 @@ public class RhittaListener implements Listener {
                     0.08
             );
 
-            // DAMAGE
             for (LivingEntity entity :
                     getNearbyEnemies(
                             player,
@@ -945,7 +974,6 @@ public class RhittaListener implements Listener {
             }
         }
 
-        // 3-BLOCK FLASH
         Vector flashDirection =
                 direction.clone()
                         .multiply(PJ_SEGMENT_LENGTH);
@@ -982,7 +1010,6 @@ public class RhittaListener implements Listener {
                 )
         );
 
-        // START FLASH
         player.getWorld().spawnParticle(
                 Particle.DUST,
                 start,
@@ -1021,7 +1048,6 @@ public class RhittaListener implements Listener {
                 0.15
         );
 
-        // SOUND
         player.getWorld().playSound(
                 player.getLocation(),
                 Sound.ENTITY_EVOKER_CAST_SPELL,
@@ -1319,21 +1345,40 @@ public class RhittaListener implements Listener {
         List<LivingEntity> result =
                 new ArrayList<>();
 
+        double radiusSquared =
+                radius * radius;
+
         for (LivingEntity entity :
-                player.getWorld()
-                        .getLivingEntities()) {
+                player.getWorld().getLivingEntities()) {
 
-            if (entity == player) {
+            // Never target the caster.
+            if (entity.getUniqueId()
+                    .equals(player.getUniqueId())) {
+
                 continue;
             }
 
-            if (entity instanceof Player) {
+            // Ignore dead entities.
+            if (entity.isDead()) {
                 continue;
             }
+
+            /*
+             * IMPORTANT FIX:
+             *
+             * There is intentionally NO:
+             *
+             * if (entity instanceof Player) {
+             *     continue;
+             * }
+             *
+             * Players are now valid targets.
+             */
 
             if (entity.getLocation()
-                    .distance(player.getLocation())
-                    <= radius) {
+                    .distanceSquared(
+                            player.getLocation()
+                    ) <= radiusSquared) {
 
                 result.add(entity);
             }
@@ -1664,6 +1709,12 @@ public class RhittaListener implements Listener {
     public void onDeath(
             PlayerDeathEvent event) {
 
+        /*
+         * Keep the current Rhitta protection for now.
+         *
+         * The AngelChest duplication issue requires checking
+         * RhittaManager.forceOneRhitta() before changing this.
+         */
         event.getDrops()
                 .removeIf(manager::isRhitta);
     }
