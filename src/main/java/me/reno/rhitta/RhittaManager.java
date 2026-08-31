@@ -34,6 +34,15 @@ public class RhittaManager {
     private final Map<UUID, String> activeAbilities = new HashMap<>();
     private final Map<String, Long> cooldowns = new HashMap<>();
 
+    /*
+     * Players who recently respawned.
+     *
+     * This is used to prevent AngelChest/death-chest restoration
+     * from leaving the owner with two Rhittas.
+     */
+    private final Map<UUID, Long> respawnProtection =
+            new HashMap<>();
+
     // ============================================================
     // KEYS
     // ============================================================
@@ -304,7 +313,9 @@ public class RhittaManager {
             return;
         }
 
-        // Do not create another Rhitta.
+        /*
+         * NEVER create a new Rhitta if one already exists.
+         */
         if (hasRhitta(player)) {
             return;
         }
@@ -378,6 +389,9 @@ public class RhittaManager {
                                     return;
                                 }
 
+                                /*
+                                 * Check again before creating.
+                                 */
                                 if (!hasRhitta(player)) {
                                     giveRhitta(player);
                                 }
@@ -402,9 +416,122 @@ public class RhittaManager {
             return;
         }
 
+        /*
+         * First clean any existing duplicates.
+         */
+        if (countRhitta(player) > 1) {
+
+            removeExtraCopies(player);
+        }
+
+        /*
+         * Only give one if completely missing.
+         */
         if (!hasRhitta(player)) {
+
             giveRhitta(player);
         }
+    }
+
+    // ============================================================
+    // SCHEDULED RESPAWN DUPLICATE PROTECTION
+    // ============================================================
+
+    public void scheduleRespawnCleanup(Player player) {
+
+        if (player == null) {
+            return;
+        }
+
+        if (!isOwner(player)) {
+            return;
+        }
+
+        UUID uuid =
+                player.getUniqueId();
+
+        respawnProtection.put(
+                uuid,
+                System.currentTimeMillis()
+        );
+
+        /*
+         * Immediate cleanup.
+         */
+        plugin.getServer()
+                .getScheduler()
+                .runTask(
+                        plugin,
+                        () -> {
+
+                            if (!player.isOnline()) {
+                                return;
+                            }
+
+                            forceOneRhitta(player);
+                        }
+                );
+
+        /*
+         * AngelChest may restore the inventory slightly later.
+         *
+         * Check several times after respawn.
+         */
+
+        scheduleCleanup(
+                player,
+                5L
+        );
+
+        scheduleCleanup(
+                player,
+                20L
+        );
+
+        scheduleCleanup(
+                player,
+                40L
+        );
+
+        scheduleCleanup(
+                player,
+                80L
+        );
+
+        scheduleCleanup(
+                player,
+                120L
+        );
+
+        scheduleCleanup(
+                player,
+                200L
+        );
+    }
+
+    private void scheduleCleanup(
+            Player player,
+            long delay) {
+
+        plugin.getServer()
+                .getScheduler()
+                .runTaskLater(
+                        plugin,
+                        () -> {
+
+                            if (!player.isOnline()) {
+                                return;
+                            }
+
+                            if (!isOwner(player)) {
+                                return;
+                            }
+
+                            forceOneRhitta(player);
+
+                        },
+                        delay
+                );
     }
 
     // ============================================================
@@ -475,6 +602,10 @@ public class RhittaManager {
 
     private int removeExtraCopies(Player player) {
 
+        if (player == null) {
+            return 0;
+        }
+
         int removed = 0;
         boolean kept = false;
 
@@ -482,7 +613,7 @@ public class RhittaManager {
                 player.getInventory();
 
         // --------------------------------------------------------
-        // INVENTORY
+        // MAIN INVENTORY
         // --------------------------------------------------------
 
         ItemStack[] contents =
@@ -499,13 +630,31 @@ public class RhittaManager {
                 continue;
             }
 
+            /*
+             * Keep the first Rhitta.
+             */
             if (!kept) {
+
+                /*
+                 * If somehow the stack contains more than one
+                 * Rhitta, split it down to exactly one.
+                 */
+                if (item.getAmount() > 1) {
+
+                    removed +=
+                            item.getAmount() - 1;
+
+                    item.setAmount(1);
+                }
 
                 kept = true;
 
                 continue;
             }
 
+            /*
+             * Every additional Rhitta is removed.
+             */
             removed += item.getAmount();
 
             contents[i] = null;
@@ -523,6 +672,14 @@ public class RhittaManager {
         if (isRhitta(offhand)) {
 
             if (!kept) {
+
+                if (offhand.getAmount() > 1) {
+
+                    removed +=
+                            offhand.getAmount() - 1;
+
+                    offhand.setAmount(1);
+                }
 
                 kept = true;
 
@@ -548,11 +705,21 @@ public class RhittaManager {
              i < ender.length;
              i++) {
 
-            if (!isRhitta(ender[i])) {
+            ItemStack item =
+                    ender[i];
+
+            if (!isRhitta(item)) {
                 continue;
             }
 
-            removed += ender[i].getAmount();
+            /*
+             * We already keep one Rhitta in the player's normal
+             * inventory/offhand.
+             *
+             * Therefore every Rhitta inside the Ender Chest
+             * is an extra copy.
+             */
+            removed += item.getAmount();
 
             ender[i] = null;
         }
@@ -577,6 +744,10 @@ public class RhittaManager {
 
     private int removeAllRhitta(Player player) {
 
+        if (player == null) {
+            return 0;
+        }
+
         int removed = 0;
 
         PlayerInventory inventory =
@@ -593,11 +764,14 @@ public class RhittaManager {
              i < contents.length;
              i++) {
 
-            if (!isRhitta(contents[i])) {
+            ItemStack item =
+                    contents[i];
+
+            if (!isRhitta(item)) {
                 continue;
             }
 
-            removed += contents[i].getAmount();
+            removed += item.getAmount();
 
             contents[i] = null;
         }
@@ -632,11 +806,14 @@ public class RhittaManager {
              i < ender.length;
              i++) {
 
-            if (!isRhitta(ender[i])) {
+            ItemStack item =
+                    ender[i];
+
+            if (!isRhitta(item)) {
                 continue;
             }
 
-            removed += ender[i].getAmount();
+            removed += item.getAmount();
 
             ender[i] = null;
         }
@@ -944,4 +1121,4 @@ public class RhittaManager {
                 end - System.currentTimeMillis()
         );
     }
-}
+                } 
