@@ -143,11 +143,6 @@ public class RhittaListener implements Listener {
             return;
         }
 
-        /*
-         * Angel Chest can restore items after the respawn event.
-         * Therefore cleanup happens several times.
-         */
-
         plugin.getServer()
                 .getScheduler()
                 .runTaskLater(
@@ -211,14 +206,6 @@ public class RhittaListener implements Listener {
         }
 
         if (!manager.isSkillsEnabled()) {
-            return;
-        }
-
-        ItemStack weapon =
-                player.getInventory()
-                        .getItem(event.getNewSlot());
-
-        if (!manager.isRhitta(weapon)) {
             return;
         }
 
@@ -297,23 +284,16 @@ public class RhittaListener implements Listener {
     /*
      * IMPORTANT:
      *
-     * We intentionally ONLY accept RIGHT_CLICK_AIR.
+     * Skills DO NOT require Rhitta to be held.
      *
-     * This means:
+     * The skill is determined ONLY by:
      *
-     * Eating food:
-     *     will not activate Rhitta.
+     *     1. Player is Rhitta owner
+     *     2. Skills are enabled
+     *     3. Player is right-clicking with MAIN HAND
+     *     4. Current hotbar slot
      *
-     * Placing blocks:
-     *     will not activate Rhitta.
-     *
-     * Opening/interacting with blocks:
-     *     will not activate Rhitta.
-     *
-     * The skill requires:
-     *     MAIN HAND
-     *     RHITTA
-     *     RIGHT CLICK AIR
+     * Rhitta can be anywhere in the inventory.
      */
 
     @EventHandler(
@@ -322,40 +302,39 @@ public class RhittaListener implements Listener {
     )
     public void onSkillUse(PlayerInteractEvent event) {
 
+        // MAIN HAND ONLY
         if (event.getHand() != EquipmentSlot.HAND) {
             return;
         }
 
-        Action action =
-                event.getAction();
-
-        /*
-         * ONLY right-click air.
-         *
-         * RIGHT_CLICK_BLOCK is intentionally ignored.
-         */
-        if (action != Action.RIGHT_CLICK_AIR) {
+        // ONLY RIGHT CLICK AIR
+        if (event.getAction() != Action.RIGHT_CLICK_AIR) {
             return;
         }
 
         Player player =
                 event.getPlayer();
 
+        // OWNER ONLY
         if (!manager.isOwner(player)) {
             return;
         }
 
+        // SKILLS MUST BE ENABLED
         if (!manager.isSkillsEnabled()) {
             return;
         }
 
-        ItemStack item =
-                player.getInventory()
-                        .getItemInMainHand();
-
-        if (!manager.isRhitta(item)) {
-            return;
-        }
+        // ========================================================
+        // IMPORTANT FIX
+        // ========================================================
+        //
+        // We DO NOT check:
+        //
+        //     manager.isRhitta(item)
+        //
+        // The selected hotbar slot controls the skill.
+        //
 
         int slot =
                 player.getInventory()
@@ -368,14 +347,10 @@ public class RhittaListener implements Listener {
             return;
         }
 
-        /*
-         * Cancel BEFORE activating.
-         *
-         * This prevents the interaction from continuing
-         * into another action.
-         */
+        // Stop the normal right-click action.
         event.setCancelled(true);
 
+        // Activate the selected skill.
         activateAbility(
                 player,
                 ability
@@ -1436,21 +1411,6 @@ public class RhittaListener implements Listener {
     // ============================================================
     // NEARBY ENEMIES
     // ============================================================
-    /*
-     * IMPORTANT FIX:
-     *
-     * The OLD code had:
-     *
-     *     if (entity instanceof Player) {
-     *         continue;
-     *     }
-     *
-     * That meant Rhitta skills could NEVER damage players.
-     *
-     * This version allows players to be targets.
-     *
-     * The caster is still excluded.
-     */
 
     private Iterable<LivingEntity> getNearbyEnemies(
             Player player,
@@ -1809,13 +1769,6 @@ public class RhittaListener implements Listener {
         Player player =
                 event.getEntity();
 
-        /*
-         * Remove Rhitta from normal death drops.
-         *
-         * Angel Chest may have its own handling, so the
-         * delayed cleanup in onRespawn() also runs.
-         */
-
         event.getDrops()
                 .removeIf(manager::isRhitta);
 
@@ -1882,4 +1835,4 @@ public class RhittaListener implements Listener {
                         * (1.0 - reduction)
         );
     }
-    }
+}
