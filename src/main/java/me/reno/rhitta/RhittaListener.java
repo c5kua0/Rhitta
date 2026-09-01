@@ -3,7 +3,6 @@ package me.reno.rhitta;
 import org.bukkit.ChatColor;
 import org.bukkit.Color;
 import org.bukkit.Location;
-import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.World;
@@ -25,12 +24,13 @@ import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
+import org.bukkit.event.player.PlayerItemHeldEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
-import org.bukkit.util.Vector;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
+import org.bukkit.util.Vector;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -121,7 +121,13 @@ public class RhittaListener implements Listener {
             return;
         }
 
-        manager.forceOneRhitta(player);
+        plugin.getServer()
+                .getScheduler()
+                .runTaskLater(
+                        plugin,
+                        () -> manager.forceOneRhitta(player),
+                        1L
+                );
     }
 
     // ============================================================
@@ -133,13 +139,102 @@ public class RhittaListener implements Listener {
 
         Player player = event.getPlayer();
 
+        if (!manager.isOwner(player)) {
+            return;
+        }
+
+        /*
+         * Angel Chest can restore items after the respawn event.
+         * Therefore cleanup happens several times.
+         */
+
         plugin.getServer()
                 .getScheduler()
                 .runTaskLater(
                         plugin,
-                        () -> manager.forceOneRhitta(player),
-                        1L
+                        () -> {
+
+                            if (!player.isOnline()) {
+                                return;
+                            }
+
+                            manager.forceOneRhitta(player);
+
+                        },
+                        2L
                 );
+
+        plugin.getServer()
+                .getScheduler()
+                .runTaskLater(
+                        plugin,
+                        () -> {
+
+                            if (!player.isOnline()) {
+                                return;
+                            }
+
+                            manager.removeDuplicates();
+
+                        },
+                        20L
+                );
+
+        plugin.getServer()
+                .getScheduler()
+                .runTaskLater(
+                        plugin,
+                        () -> {
+
+                            if (!player.isOnline()) {
+                                return;
+                            }
+
+                            manager.removeDuplicates();
+
+                        },
+                        60L
+                );
+    }
+
+    // ============================================================
+    // HOTBAR SKILL INDICATOR
+    // ============================================================
+
+    @EventHandler
+    public void onHotbarChange(PlayerItemHeldEvent event) {
+
+        Player player = event.getPlayer();
+
+        if (!manager.isOwner(player)) {
+            return;
+        }
+
+        if (!manager.isSkillsEnabled()) {
+            return;
+        }
+
+        ItemStack weapon =
+                player.getInventory()
+                        .getItem(event.getNewSlot());
+
+        if (!manager.isRhitta(weapon)) {
+            return;
+        }
+
+        String ability =
+                manager.getAbilityForSlot(
+                        event.getNewSlot()
+                );
+
+        if (ability == null) {
+            return;
+        }
+
+        player.sendActionBar(
+                ChatColor.GOLD +
+                formatAbility(ability)
+        );
     }
 
     // ============================================================
@@ -199,43 +294,58 @@ public class RhittaListener implements Listener {
     // ============================================================
     // RHITTA SKILL RIGHT CLICK
     // ============================================================
+    /*
+     * IMPORTANT:
+     *
+     * We intentionally ONLY accept RIGHT_CLICK_AIR.
+     *
+     * This means:
+     *
+     * Eating food:
+     *     will not activate Rhitta.
+     *
+     * Placing blocks:
+     *     will not activate Rhitta.
+     *
+     * Opening/interacting with blocks:
+     *     will not activate Rhitta.
+     *
+     * The skill requires:
+     *     MAIN HAND
+     *     RHITTA
+     *     RIGHT CLICK AIR
+     */
 
     @EventHandler(
             priority = EventPriority.HIGHEST,
-            ignoreCancelled = true
+            ignoreCancelled = false
     )
     public void onSkillUse(PlayerInteractEvent event) {
 
-        // Only main-hand interaction can activate a skill.
         if (event.getHand() != EquipmentSlot.HAND) {
             return;
         }
 
-        Player player = event.getPlayer();
+        Action action =
+                event.getAction();
+
+        /*
+         * ONLY right-click air.
+         *
+         * RIGHT_CLICK_BLOCK is intentionally ignored.
+         */
+        if (action != Action.RIGHT_CLICK_AIR) {
+            return;
+        }
+
+        Player player =
+                event.getPlayer();
 
         if (!manager.isOwner(player)) {
             return;
         }
 
         if (!manager.isSkillsEnabled()) {
-            return;
-        }
-
-        /*
-         * IMPORTANT:
-         * Skills only activate from RIGHT_CLICK_AIR.
-         *
-         * RIGHT_CLICK_BLOCK is deliberately ignored.
-         * This prevents activation while interacting with:
-         * - chests
-         * - furnaces
-         * - crafting tables
-         * - doors
-         * - buttons
-         * - levers
-         * - other blocks
-         */
-        if (event.getAction() != Action.RIGHT_CLICK_AIR) {
             return;
         }
 
@@ -247,31 +357,6 @@ public class RhittaListener implements Listener {
             return;
         }
 
-        /*
-         * Additional protection against an active item-use state.
-         */
-        if (player.isHandRaised()) {
-            return;
-        }
-
-        /*
-         * If the player is currently using an edible item,
-         * never activate a skill.
-         *
-         * This is mostly defensive because Rhitta itself must
-         * already be in the main hand for this handler to continue.
-         */
-        ItemStack offHand =
-                player.getInventory()
-                        .getItemInOffHand();
-
-        if (offHand.getType() != Material.AIR
-                && offHand.getType().isEdible()
-                && player.isHandRaised()) {
-
-            return;
-        }
-
         int slot =
                 player.getInventory()
                         .getHeldItemSlot();
@@ -279,10 +364,16 @@ public class RhittaListener implements Listener {
         String ability =
                 manager.getAbilityForSlot(slot);
 
-        if (ability == null || ability.isBlank()) {
+        if (ability == null) {
             return;
         }
 
+        /*
+         * Cancel BEFORE activating.
+         *
+         * This prevents the interaction from continuing
+         * into another action.
+         */
         event.setCancelled(true);
 
         activateAbility(
@@ -388,6 +479,7 @@ public class RhittaListener implements Listener {
 
         fireball.setShooter(player);
         fireball.setDirection(direction);
+
         fireball.setYield(0F);
         fireball.setIsIncendiary(false);
 
@@ -469,20 +561,23 @@ public class RhittaListener implements Listener {
             LivingEntity target =
                     (LivingEntity) event.getHitEntity();
 
-            target.damage(
-                    FIREBALL_DAMAGE,
-                    shooter
-            );
+            if (target != shooter) {
 
-            target.getWorld().spawnParticle(
-                    Particle.FLAME,
-                    target.getLocation().add(0, 1, 0),
-                    30,
-                    0.4,
-                    0.5,
-                    0.4,
-                    0.05
-            );
+                target.damage(
+                        FIREBALL_DAMAGE,
+                        shooter
+                );
+
+                target.getWorld().spawnParticle(
+                        Particle.FLAME,
+                        target.getLocation().add(0, 1, 0),
+                        30,
+                        0.4,
+                        0.5,
+                        0.4,
+                        0.05
+                );
+            }
         }
     }
 
@@ -740,6 +835,10 @@ public class RhittaListener implements Listener {
 
     private void damageDashTargets(
             Player player) {
+
+        if (!player.isOnline()) {
+            return;
+        }
 
         Location location =
                 player.getLocation();
@@ -1337,6 +1436,21 @@ public class RhittaListener implements Listener {
     // ============================================================
     // NEARBY ENEMIES
     // ============================================================
+    /*
+     * IMPORTANT FIX:
+     *
+     * The OLD code had:
+     *
+     *     if (entity instanceof Player) {
+     *         continue;
+     *     }
+     *
+     * That meant Rhitta skills could NEVER damage players.
+     *
+     * This version allows players to be targets.
+     *
+     * The caster is still excluded.
+     */
 
     private Iterable<LivingEntity> getNearbyEnemies(
             Player player,
@@ -1345,40 +1459,23 @@ public class RhittaListener implements Listener {
         List<LivingEntity> result =
                 new ArrayList<>();
 
-        double radiusSquared =
-                radius * radius;
-
         for (LivingEntity entity :
-                player.getWorld().getLivingEntities()) {
+                player.getWorld()
+                        .getLivingEntities()) {
 
-            // Never target the caster.
-            if (entity.getUniqueId()
-                    .equals(player.getUniqueId())) {
-
+            if (entity == player) {
                 continue;
             }
 
-            // Ignore dead entities.
-            if (entity.isDead()) {
+            if (!entity.isValid()) {
                 continue;
             }
-
-            /*
-             * IMPORTANT FIX:
-             *
-             * There is intentionally NO:
-             *
-             * if (entity instanceof Player) {
-             *     continue;
-             * }
-             *
-             * Players are now valid targets.
-             */
 
             if (entity.getLocation()
                     .distanceSquared(
                             player.getLocation()
-                    ) <= radiusSquared) {
+                    )
+                    <= radius * radius) {
 
                 result.add(entity);
             }
@@ -1709,14 +1806,37 @@ public class RhittaListener implements Listener {
     public void onDeath(
             PlayerDeathEvent event) {
 
+        Player player =
+                event.getEntity();
+
         /*
-         * Keep the current Rhitta protection for now.
+         * Remove Rhitta from normal death drops.
          *
-         * The AngelChest duplication issue requires checking
-         * RhittaManager.forceOneRhitta() before changing this.
+         * Angel Chest may have its own handling, so the
+         * delayed cleanup in onRespawn() also runs.
          */
+
         event.getDrops()
                 .removeIf(manager::isRhitta);
+
+        if (manager.isOwner(player)) {
+
+            plugin.getServer()
+                    .getScheduler()
+                    .runTaskLater(
+                            plugin,
+                            () -> {
+
+                                if (!player.isOnline()) {
+                                    return;
+                                }
+
+                                manager.removeDuplicates();
+
+                            },
+                            40L
+                    );
+        }
     }
 
     // ============================================================
@@ -1762,4 +1882,4 @@ public class RhittaListener implements Listener {
                         * (1.0 - reduction)
         );
     }
-}
+    }
