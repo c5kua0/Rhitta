@@ -3,7 +3,7 @@ plugins {
 }
 
 group = "me.reno.rhitta"
-version = "2.0.3"
+version = "v3_Awakening"
 
 repositories {
     maven {
