@@ -68,37 +68,24 @@ public class RhittaListener implements Listener {
     // ============================================================
 
     private static final double FIREBALL_DAMAGE = 10.0;
-
-    // Absolute Dominance
     private static final double AD_DAMAGE = 30.0;
-
     private static final double KA_DAMAGE = 4.0;
-
-    // Punishment of the Proud
     private static final double PP_DAMAGE = 35.0;
-
-    // Pride's Judgment
     private static final double PJ_DAMAGE = 45.0;
-
     private static final double KAU_DAMAGE = 20.0;
 
     // ============================================================
     // RADIUS / RANGE
     // ============================================================
 
-    // Absolute Dominance
     private static final double AD_RADIUS = 15.0;
-
     private static final double KA_RADIUS = 8.0;
-
     private static final double KAU_RADIUS = 12.0;
 
-    // Pride's Judgment
     private static final double PJ_RANGE = 30.0;
     private static final double PJ_THICKNESS = 1.8;
     private static final double PJ_SEGMENT_LENGTH = 4.0;
 
-    // Punishment of the Proud
     private static final double PP_RANGE = 10.0;
 
     // ============================================================
@@ -109,22 +96,19 @@ public class RhittaListener implements Listener {
     private static final int KA_DURATION = 10;
     private static final int KAU_DURATION = 15;
 
-    // Absolute Dominance
     private static final int AD_SLOW_DURATION = 6;
     private static final int AD_WEAKNESS_DURATION = 6;
     private static final int AD_FIRE_DURATION = 5;
     private static final int AD_DARKNESS_DURATION = 3;
     private static final int AD_WITHER_DURATION = 4;
 
-    // Awakening
     private static final long AWAKENING_DURATION = 30_000L;
 
     // ============================================================
     // AWAKENED PLAYERS
     // ============================================================
 
-    private final Set<UUID> awakenedPlayers =
-            new HashSet<>();
+    private final Set<UUID> awakenedPlayers = new HashSet<>();
 
     // ============================================================
     // CONSTRUCTOR
@@ -171,10 +155,7 @@ public class RhittaListener implements Listener {
 
         Player player = event.getPlayer();
 
-        // Awakening ends on death
-        awakenedPlayers.remove(
-                player.getUniqueId()
-        );
+        awakenedPlayers.remove(player.getUniqueId());
 
         if (!manager.isOwner(player)) {
             return;
@@ -252,15 +233,14 @@ public class RhittaListener implements Listener {
         if (slot == 7) {
 
             player.sendActionBar(
-                    ChatColor.GOLD +
-                    "⚡ AWAKENING — SHIFT + RIGHT CLICK"
+                    ChatColor.GOLD.toString()
+                            + "⚡ AWAKENING — SHIFT + RIGHT CLICK"
             );
 
             return;
         }
 
-        String ability =
-                manager.getAbilityForSlot(slot);
+        String ability = manager.getAbilityForSlot(slot);
 
         if (ability == null) {
             return;
@@ -268,12 +248,11 @@ public class RhittaListener implements Listener {
 
         String prefix =
                 isAwakened(player)
-                        ? ChatColor.RED + "⚡ AWAKENED: "
+                        ? ChatColor.RED.toString() + "⚡ AWAKENED: "
                         : ChatColor.GOLD.toString();
 
         player.sendActionBar(
-                prefix +
-                formatAbility(ability)
+                prefix + formatAbility(ability)
         );
     }
 
@@ -288,16 +267,14 @@ public class RhittaListener implements Listener {
             return;
         }
 
-        Player player =
-                (Player) event.getDamager();
+        Player player = (Player) event.getDamager();
 
         if (!manager.isOwner(player)) {
             return;
         }
 
         ItemStack weapon =
-                player.getInventory()
-                        .getItemInMainHand();
+                player.getInventory().getItemInMainHand();
 
         if (!manager.isRhitta(weapon)) {
             return;
@@ -341,48 +318,33 @@ public class RhittaListener implements Listener {
     )
     public void onSkillUse(PlayerInteractEvent event) {
 
-        // MAIN HAND ONLY
         if (event.getHand() != EquipmentSlot.HAND) {
             return;
         }
 
-        // RIGHT CLICK ONLY
         if (event.getAction() != Action.RIGHT_CLICK_AIR) {
             return;
         }
 
-        Player player =
-                event.getPlayer();
+        Player player = event.getPlayer();
 
-        // OWNER ONLY
         if (!manager.isOwner(player)) {
             return;
         }
 
-        // SKILLS ENABLED
         if (!manager.isSkillsEnabled()) {
             return;
         }
 
-        /*
-         * Prevent accidental activation while eating.
-         *
-         * Empty hand still works.
-         * Rhitta does NOT need to be held.
-         */
         ItemStack item =
-                player.getInventory()
-                        .getItemInMainHand();
+                player.getInventory().getItemInMainHand();
 
-        if (item != null &&
-                item.getType().isEdible()) {
-
+        if (item != null && item.getType().isEdible()) {
             return;
         }
 
         int slot =
-                player.getInventory()
-                        .getHeldItemSlot();
+                player.getInventory().getHeldItemSlot();
 
         // ========================================================
         // SLOT 8 = AWAKENING
@@ -432,9 +394,6 @@ public class RhittaListener implements Listener {
             return;
         }
 
-        /*
-         * Awakening changes the skills automatically.
-         */
         if (isAwakened(player)) {
 
             switch (ability.toLowerCase()) {
@@ -504,8 +463,8 @@ public class RhittaListener implements Listener {
 
             default:
                 player.sendMessage(
-                        ChatColor.RED +
-                        "Unknown Rhitta skill."
+                        ChatColor.RED.toString()
+                                + "Unknown Rhitta skill."
                 );
                 break;
         }
@@ -521,8 +480,8 @@ public class RhittaListener implements Listener {
         if (isAwakened(player)) {
 
             player.sendMessage(
-                    ChatColor.RED +
-                    "You are already awakened."
+                    ChatColor.RED.toString()
+                            + "You are already awakened."
             );
 
             return;
@@ -532,20 +491,12 @@ public class RhittaListener implements Listener {
                 player.getUniqueId()
         );
 
-        // ========================================================
-        // GLOBAL MESSAGE
-        // ========================================================
-
         plugin.getServer()
                 .broadcastMessage(
-                        ChatColor.DARK_RED +
-                        ChatColor.BOLD +
-                        "Who Decided That?"
+                        ChatColor.DARK_RED.toString()
+                                + ChatColor.BOLD.toString()
+                                + "Who Decided That?"
                 );
-
-        // ========================================================
-        // ACTIVATION EFFECT
-        // ========================================================
 
         Location location =
                 player.getLocation();
@@ -588,29 +539,23 @@ public class RhittaListener implements Listener {
         );
 
         player.sendTitle(
-                ChatColor.DARK_RED +
-                        "AWAKENED",
-                ChatColor.GOLD +
-                        "Who Decided That?",
+                ChatColor.DARK_RED.toString() + "AWAKENED",
+                ChatColor.GOLD.toString() + "Who Decided That?",
                 10,
                 40,
                 10
         );
 
         player.sendMessage(
-                ChatColor.DARK_RED +
-                ChatColor.BOLD +
-                "⚡ RHITTA AWAKENED"
+                ChatColor.DARK_RED.toString()
+                        + ChatColor.BOLD.toString()
+                        + "⚡ RHITTA AWAKENED"
         );
 
         player.sendMessage(
-                ChatColor.GOLD +
-                "Your skills have awakened."
+                ChatColor.GOLD.toString()
+                        + "Your skills have awakened."
         );
-
-        // ========================================================
-        // AUTOMATIC END
-        // ========================================================
 
         plugin.getServer()
                 .getScheduler()
@@ -636,15 +581,15 @@ public class RhittaListener implements Listener {
                             );
 
                             player.sendMessage(
-                                    ChatColor.GRAY +
-                                    "⚡ Awakening has ended."
+                                    ChatColor.GRAY.toString()
+                                            + "⚡ Awakening has ended."
                             );
 
                             player.sendTitle(
-                                    ChatColor.GRAY +
-                                            "AWAKENING ENDED",
-                                    ChatColor.DARK_GRAY +
-                                            "The power fades...",
+                                    ChatColor.GRAY.toString()
+                                            + "AWAKENING ENDED",
+                                    ChatColor.DARK_GRAY.toString()
+                                            + "The power fades...",
                                     5,
                                     30,
                                     10
@@ -695,9 +640,7 @@ public class RhittaListener implements Listener {
                             }
 
                             for (UUID uuid :
-                                    new HashSet<>(
-                                            awakenedPlayers
-                                    )) {
+                                    new HashSet<>(awakenedPlayers)) {
 
                                 Player player =
                                         plugin.getServer()
@@ -714,7 +657,6 @@ public class RhittaListener implements Listener {
                                         player.getLocation()
                                                 .add(0, 1, 0);
 
-                                // Flame aura
                                 for (double angle = 0;
                                      angle < Math.PI * 2;
                                      angle += Math.PI / 10) {
@@ -726,9 +668,8 @@ public class RhittaListener implements Listener {
                                             Math.sin(angle) * 0.75;
 
                                     double y =
-                                            Math.sin(
-                                                    angle * 2
-                                            ) * 0.35;
+                                            Math.sin(angle * 2)
+                                                    * 0.35;
 
                                     player.getWorld()
                                             .spawnParticle(
@@ -811,7 +752,6 @@ public class RhittaListener implements Listener {
 
         fireball.setShooter(player);
         fireball.setDirection(direction);
-
         fireball.setYield(0F);
         fireball.setIsIncendiary(false);
 
@@ -924,18 +864,14 @@ public class RhittaListener implements Listener {
     public void onFireballHit(
             ProjectileHitEvent event) {
 
-        if (!(event.getEntity()
-                instanceof Fireball)) {
-
+        if (!(event.getEntity() instanceof Fireball)) {
             return;
         }
 
         Fireball fireball =
                 (Fireball) event.getEntity();
 
-        if (!(fireball.getShooter()
-                instanceof Player)) {
-
+        if (!(fireball.getShooter() instanceof Player)) {
             return;
         }
 
@@ -979,8 +915,7 @@ public class RhittaListener implements Listener {
                 0.03
         );
 
-        if (event.getHitEntity()
-                instanceof LivingEntity) {
+        if (event.getHitEntity() instanceof LivingEntity) {
 
             LivingEntity target =
                     (LivingEntity) event.getHitEntity();
@@ -1117,14 +1052,14 @@ public class RhittaListener implements Listener {
         );
 
         player.sendMessage(
-                ChatColor.YELLOW +
-                "Strength II + Resistance II"
+                ChatColor.YELLOW.toString()
+                        + "Strength II + Resistance II"
         );
 
         player.sendMessage(
-                ChatColor.GRAY +
-                String.valueOf(affected) +
-                " enemies affected."
+                ChatColor.GRAY.toString()
+                        + affected
+                        + " enemies affected."
         );
     }
 
@@ -1249,9 +1184,9 @@ public class RhittaListener implements Listener {
         );
 
         player.sendMessage(
-                ChatColor.GRAY +
-                affected +
-                " enemies dominated."
+                ChatColor.GRAY.toString()
+                        + affected
+                        + " enemies dominated."
         );
     }
 
@@ -1567,9 +1502,9 @@ public class RhittaListener implements Listener {
         );
 
         player.sendMessage(
-                ChatColor.GRAY +
-                String.valueOf(hit) +
-                " enemy/enemies hit by the dash."
+                ChatColor.GRAY.toString()
+                        + hit
+                        + " enemy/enemies hit by the dash."
         );
     }
 
@@ -1709,9 +1644,9 @@ public class RhittaListener implements Listener {
         );
 
         player.sendMessage(
-                ChatColor.RED +
-                hit +
-                " enemies destroyed."
+                ChatColor.RED.toString()
+                        + hit
+                        + " enemies destroyed."
         );
     }
 
@@ -2003,9 +1938,9 @@ public class RhittaListener implements Listener {
         );
 
         player.sendMessage(
-                ChatColor.GRAY +
-                alreadyHit.size() +
-                " enemy/enemies judged."
+                ChatColor.GRAY.toString()
+                        + alreadyHit.size()
+                        + " enemy/enemies judged."
         );
     }
 
@@ -2096,7 +2031,6 @@ public class RhittaListener implements Listener {
                     player
             );
 
-            // Slowness 355
             entity.addPotionEffect(
                     new PotionEffect(
                             PotionEffectType.SLOWNESS,
@@ -2108,7 +2042,6 @@ public class RhittaListener implements Listener {
                     )
             );
 
-            // Weakness IV
             entity.addPotionEffect(
                     new PotionEffect(
                             PotionEffectType.WEAKNESS,
@@ -2120,7 +2053,6 @@ public class RhittaListener implements Listener {
                     )
             );
 
-            // Darkness
             entity.addPotionEffect(
                     new PotionEffect(
                             PotionEffectType.DARKNESS,
@@ -2132,7 +2064,6 @@ public class RhittaListener implements Listener {
                     )
             );
 
-            // Wither II
             entity.addPotionEffect(
                     new PotionEffect(
                             PotionEffectType.WITHER,
@@ -2144,7 +2075,6 @@ public class RhittaListener implements Listener {
                     )
             );
 
-            // Fire
             entity.setFireTicks(
                     20 * AD_FIRE_DURATION
             );
@@ -2168,7 +2098,6 @@ public class RhittaListener implements Listener {
             affected++;
         }
 
-        // CASTER BUFFS
         player.addPotionEffect(
                 new PotionEffect(
                         PotionEffectType.STRENGTH,
@@ -2244,14 +2173,14 @@ public class RhittaListener implements Listener {
         );
 
         player.sendMessage(
-                ChatColor.RED +
-                "30 Damage • Slowness 355 • Weakness IV"
+                ChatColor.RED.toString()
+                        + "30 Damage • Slowness 355 • Weakness IV"
         );
 
         player.sendMessage(
-                ChatColor.GRAY +
-                affected +
-                " enemies completely dominated."
+                ChatColor.GRAY.toString()
+                        + affected
+                        + " enemies completely dominated."
         );
     }
 
@@ -2430,14 +2359,14 @@ public class RhittaListener implements Listener {
         );
 
         player.sendMessage(
-                ChatColor.RED +
-                "75 DAMAGE — TOTAL DOMINATION"
+                ChatColor.RED.toString()
+                        + "75 DAMAGE — TOTAL DOMINATION"
         );
 
         player.sendMessage(
-                ChatColor.GRAY +
-                affected +
-                " enemies overwhelmed."
+                ChatColor.GRAY.toString()
+                        + affected
+                        + " enemies overwhelmed."
         );
     }
 
@@ -2565,9 +2494,9 @@ public class RhittaListener implements Listener {
         );
 
         player.sendMessage(
-                ChatColor.YELLOW +
-                String.valueOf(affected) +
-                " enemies overwhelmed."
+                ChatColor.YELLOW.toString()
+                        + affected
+                        + " enemies overwhelmed."
         );
     }
 
@@ -2747,9 +2676,9 @@ public class RhittaListener implements Listener {
         );
 
         player.sendMessage(
-                ChatColor.RED +
-                affected +
-                " enemies have been crushed."
+                ChatColor.RED.toString()
+                        + affected
+                        + " enemies have been crushed."
         );
     }
 
@@ -2765,8 +2694,7 @@ public class RhittaListener implements Listener {
                 new ArrayList<>();
 
         for (LivingEntity entity :
-                player.getWorld()
-                        .getLivingEntities()) {
+                player.getWorld().getLivingEntities()) {
 
             // DO NOT HIT THE CASTER
             if (entity == player) {
@@ -2926,10 +2854,10 @@ public class RhittaListener implements Listener {
             String ability) {
 
         player.sendMessage(
-                ChatColor.GOLD +
-                ability +
-                ChatColor.YELLOW +
-                " activated!"
+                ChatColor.GOLD.toString()
+                        + ability
+                        + ChatColor.YELLOW.toString()
+                        + " activated!"
         );
     }
 
@@ -2951,14 +2879,14 @@ public class RhittaListener implements Listener {
                 remaining / 1000.0;
 
         player.sendMessage(
-                ChatColor.RED +
-                formatAbility(ability) +
-                " is on cooldown: " +
-                String.format(
-                        "%.1f",
-                        seconds
-                ) +
-                "s"
+                ChatColor.RED.toString()
+                        + formatAbility(ability)
+                        + " is on cooldown: "
+                        + String.format(
+                                "%.1f",
+                                seconds
+                        )
+                        + "s"
         );
     }
 
@@ -3005,9 +2933,7 @@ public class RhittaListener implements Listener {
     public void onPickup(
             EntityPickupItemEvent event) {
 
-        if (!(event.getEntity()
-                instanceof Player)) {
-
+        if (!(event.getEntity() instanceof Player)) {
             return;
         }
 
@@ -3150,9 +3076,7 @@ public class RhittaListener implements Listener {
     public void onDamage(
             EntityDamageEvent event) {
 
-        if (!(event.getEntity()
-                instanceof Player)) {
-
+        if (!(event.getEntity() instanceof Player)) {
             return;
         }
 
