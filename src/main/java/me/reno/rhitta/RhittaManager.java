@@ -22,7 +22,7 @@ public class RhittaManager {
     // OWNER
     // ============================================================
 
-    public static final String OWNER_NAME = "_ToshiroCyMc";
+    public static final String OWNER_NAME = "ToshiroCyMc";
 
     private final RhittaPlugin plugin;
 
