@@ -1,6 +1,6 @@
 weapon:
   name: "Rhitta"
-  owner: "_ToshiroCyMc"
+  owner: "ToshiroCyMc"
 
   life-steal: 4.0
   defense-per-hit: 1.0
